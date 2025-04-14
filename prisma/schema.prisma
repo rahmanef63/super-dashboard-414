@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client" // Explicitly set output path
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// ------------------------------------------------------
+///  CORE USER & ROLE
+/// ------------------------------------------------------
+model User {
+  id                 String                   @id @default(uuid())
+  email              String                   @unique
+  name               String
+  fullName           String?
+  username           String?                  @unique
+  website            String?
+  passwordHash       String?
+  originDomain       String?
+  stylePreference    Json?
+  role               Role?                    @relation(fields: [roleId], references: [id])
+  roleId             String?
+  // relations
+  dashboards         DashboardAssignment[]
+  workspaces         WorkspaceAssignment[]
+  uiSettings         UserUiSetting?
+  logs               ActivityLog[]
+  menuPermissions    MenuPermission[]
+  createdRoles       Role[]                   @relation("RoleCreatedBy")
+  createdDashboards  Dashboard[]
+  menuEntries        MenuEntry[]              @relation("UserMenuEntries")
+  // organization
+  invitedMemberships OrganizationMembership[] @relation("InvitationSender")
+  memberships        OrganizationMembership[]
+  invitationsSent    Invitation[]             @relation("InvitationSender")
+  organizations      Organization[]           @relation("OrganizationCreator")
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+}
+
+model Role {
+  id          String                @id @default(uuid())
+  name        String                @unique // Assumed unique from usage
+  description String?
+  users       User[]
+  dashboards  DashboardAssignment[]
+  workspaces  WorkspaceAssignment[]
+  permissions MenuPermission[]
+  createdBy   User?                 @relation("RoleCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+  createdAt   DateTime              @default(now())
+}
+
+/// ------------------------------------------------------
+///  ORGANIZATION / COMPANY / INSTITUTION
+/// ------------------------------------------------------
+model Organization {
+  id          String                   @id @default(uuid())
+  name        String
+  type        OrgType                  @default(COMPANY) // COMPANY | INSTITUTION | FAMILY | OTHER
+  plan        PlanType                 @default(FREE) // FREE | PRO | ENTERPRISE
+  createdBy   User?                    @relation("OrganizationCreator", fields: [createdById], references: [id])
+  createdById String?
+  domain      ExternalDomain?          @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  domainId    String?                  @unique
+  memberships OrganizationMembership[]
+  dashboards  Dashboard[]
+  orgRoles    OrgRole[]
+  invitations Invitation[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([name, createdById]) // Example: Org name unique per creator
+}
+
+enum OrgType {
+  COMPANY
+  INSTITUTION
+  FAMILY
+  OTHER
+}
+
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid())
+  user           User             @relation(fields: [userId], references: [id])
+  userId         String
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  organizationId String
+  orgRole        OrgRole?         @relation(fields: [orgRoleId], references: [id])
+  orgRoleId      String?
+  status         MembershipStatus @default(PENDING)
+  invitedById    String?
+  invitedBy      User?            @relation("InvitationSender", fields: [invitedById], references: [id])
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([userId, organizationId])
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+model OrgRole {
+  id             String                   @id @default(uuid())
+  name           String
+  description    String?
+  organization   Organization             @relation(fields: [organizationId], references: [id])
+  organizationId String
+  permissions    Json // store org-specific permissions
+  memberships    OrganizationMembership[]
+  invitations    Invitation[]
+
+  @@unique([name, organizationId])
+}
+
+model Invitation {
+  id             String           @id @default(uuid())
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  organizationId String
+  email          String
+  token          String           @unique
+  roleId         String?
+  orgRole        OrgRole?         @relation(fields: [roleId], references: [id]) // Should likely be orgRoleId
+  sender         User?            @relation("InvitationSender", fields: [senderId], references: [id])
+  senderId       String?
+  status         InvitationStatus @default(SENT)
+  createdAt      DateTime         @default(now())
+  expiresAt      DateTime
+
+  @@unique([email, organizationId]) // User can only be invited once per org
+}
+
+enum InvitationStatus {
+  SENT
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+/// ------------------------------------------------------
+///  DASHBOARD / WORKSPACE / MENU CORE
+/// ------------------------------------------------------
+model Dashboard {
+  id              String                @id @default(uuid())
+  name            String
+  description     String?
+  organization    Organization?         @relation(fields: [organizationId], references: [id])
+  organizationId  String?
+  createdBy       User?                 @relation(fields: [createdById], references: [id])
+  createdById     String?
+  assignments     DashboardAssignment[]
+  workspaces      Workspace[]
+  menuUsages      MenuUsage[]
+  externalDomains ExternalDomain[]
+  createdAt       DateTime              @default(now())
+
+  // Make dashboard name unique within an organization or globally if org is null
+  @@unique([name, organizationId])
+  @@unique([name, createdById]) // Or unique per creator if not linked to org
+}
+
+model DashboardAssignment {
+  id          String    @id @default(uuid())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id])
+  dashboardId String
+  role        Role?     @relation(fields: [roleId], references: [id])
+  roleId      String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, dashboardId]) // User assigned only once per dashboard
+}
+
+model Workspace {
+  id          String                @id @default(uuid())
+  name        String
+  description String?
+  dashboard   Dashboard             @relation(fields: [dashboardId], references: [id])
+  dashboardId String
+  assignments WorkspaceAssignment[]
+  menuUsages  MenuUsage[]
+  createdAt   DateTime              @default(now())
+
+  @@unique([name, dashboardId]) // Workspace name unique within a dashboard
+}
+
+model WorkspaceAssignment {
+  id          String    @id @default(uuid())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  workspaceId String
+  role        Role?     @relation(fields: [roleId], references: [id])
+  roleId      String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, workspaceId]) // User assigned only once per workspace
+}
+
+model MenuItem {
+  id            String           @id @default(uuid())
+  title         String
+  type          String
+  icon          String?
+  target        String? // Could be URL path, component key, etc.
+  globalContext Boolean          @default(false)
+  parent        MenuItem?        @relation("SubMenu", fields: [parentId], references: [id])
+  parentId      String?
+  children      MenuItem[]       @relation("SubMenu")
+  usages        MenuUsage[]
+  permissions   MenuPermission[]
+  dataSources   MenuDataSource[]
+  entries       MenuEntry[]
+
+  createdAt DateTime @default(now())
+
+  // Title unique within its parent (or globally if no parent)
+  @@unique([title, parentId])
+}
+
+model MenuUsage {
+  id          String     @id @default(uuid())
+  menu        MenuItem   @relation(fields: [menuId], references: [id])
+  menuId      String
+  dashboard   Dashboard? @relation(fields: [dashboardId], references: [id])
+  dashboardId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+  workspaceId String?
+  orderIndex  Int?
+
+  // Menu item can only appear once per workspace/dashboard combination
+  @@unique([menuId, workspaceId]) // If workspaceId is always present
+  @@unique([menuId, dashboardId, workspaceId]) // More robust if workspace can be null?
+}
+
+model MenuPermission {
+  id             String   @id @default(uuid())
+  menu           MenuItem @relation(fields: [menuId], references: [id])
+  menuId         String
+  role           Role?    @relation(fields: [roleId], references: [id])
+  roleId         String?
+  user           User?    @relation(fields: [userId], references: [id])
+  userId         String?
+  permissionType String // e.g., "READ", "WRITE", "NONE"
+
+  // Define uniqueness based on how permissions are granted
+  @@unique([menuId, roleId]) // Role-based permission per menu item
+  @@unique([menuId, userId]) // User-specific permission per menu item
+}
+
+model MenuDataSource {
+  id                  String   @id @default(uuid())
+  menu                MenuItem @relation(fields: [menuId], references: [id])
+  menuId              String
+  sourceTable         String // Name of the source table/model
+  filterByWorkspaceId Boolean  @default(false)
+  filterByUserId      Boolean  @default(false)
+
+  // A menu item probably only has one data source configuration
+  @@unique([menuId])
+}
+
+///  DYNAMIC DATA STORAGE (MENU ENTRIES)
+/// ------------------------------------------------------
+model MenuEntry {
+  id          String   @id @default(uuid())
+  menu        MenuItem @relation(fields: [menuId], references: [id])
+  menuId      String
+  user        User?    @relation("UserMenuEntries", fields: [userId], references: [id]) // Creator/Owner
+  userId      String
+  workspaceId String? // Context: Workspace the entry belongs to
+  dashboardId String? // Context: Dashboard the entry belongs to
+  data        Json     @db.JsonB // The actual dynamic data
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // @@unique([menuId, userId, workspaceId]) // Example: User creates unique entry per menu/workspace
+}
+
+/// ------------------------------------------------------
+///  EXTERNAL DOMAIN & LOGS
+/// ------------------------------------------------------
+model ExternalDomain {
+  id                 String        @id @default(uuid())
+  domainName         String        @unique
+  defaultDashboard   Dashboard?    @relation(fields: [defaultDashboardId], references: [id], onDelete: Cascade)
+  defaultDashboardId String?
+  organization       Organization? // Can link to an org
+  description        String?
+  createdAt          DateTime      @default(now())
+}
+
+model UserUiSetting {
+  id                 String   @id @default(uuid())
+  user               User     @relation(fields: [userId], references: [id])
+  userId             String   @unique // One setting per user
+  fontSize           String?
+  colorTheme         String?
+  layoutMode         String?
+  additionalSettings Json?
+  updatedAt          DateTime @updatedAt
+}
+
+// model Task {
+//   id String @id @default(uuid())
+// }
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  action    String // e.g., "CREATED_TASK", "UPDATED_PROFILE"
+  metadata  Json? // Additional details about the action
+  createdAt DateTime @default(now())
+}

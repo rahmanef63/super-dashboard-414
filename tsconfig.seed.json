@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json", // Inherit base settings
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node" // CommonJS often needs 'node' resolution
+  },
+  "include": ["prisma/**/*.ts"] // Only include prisma folder for this config
+}
