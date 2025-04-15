@@ -27,11 +27,11 @@
       enable = true;
       previews = {
         web = {
-          command = ["npm" "run" "dev" "--" "--port" "9003" "--hostname" "0.0.0.0"];
+          # Default command for Next.js uses $PORT
+          command = ["npm" "run" "dev" "--" "--port" "$PORT" "--hostname" "0.0.0.0"];
           manager = "web";
         };
       };
     };
   };
 }
-

@@ -143,7 +143,8 @@ export default async function DashboardLayout({
 		);
 	}
 
-	console.log("[layout] Data fetch successful. Rendering WorkspaceProvider and children.");
+	// ADDED CONSOLE LOG HERE
+	console.log(`[layout] User ${user.email} is now viewing the dashboard: ${currentDashboard.id}`);
 
     // Prepare user object for AppSidebar
     // Adjust based on the actual definition of DataServiceUser and needs of AppSidebar
