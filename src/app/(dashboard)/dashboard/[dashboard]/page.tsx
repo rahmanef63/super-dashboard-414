@@ -19,7 +19,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Activity, ArrowRight, Folder } from "lucide-react";
-import type { DashboardParams } from "@/app/_types/dashboard";
+import type { DashboardParams } from "@/src/shared/sidebar/types/dashboard";
 import { SliceLoader } from "@/app/(dashboard)/_components/slice-loader";
 import { SliceLoaderFallback } from "@/app/(dashboard)/_components/slice-loader-fallback";
 

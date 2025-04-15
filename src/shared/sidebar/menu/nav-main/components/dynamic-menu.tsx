@@ -3,7 +3,7 @@
 import { SidebarGroup, SidebarGroupLabel } from "@/components/ui/sidebar"
 import { SubMenu } from "./sub-menu"
 import { cn } from "@/lib/utils"
-import type { NavItem } from "../../app-sidebar/types"
+import type { NavItem } from "../../../app-sidebar/types"
 
 interface DynamicMenuProps {
   items: NavItem[]

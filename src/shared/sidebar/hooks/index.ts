@@ -21,7 +21,7 @@ import { getIconByName } from "@/shared/icon-picker/utils"; // Import the utilit
 // Corrected import for TeamData - assuming it's defined here or in ../types
 // If TeamData is not in ../types, define it here:
 // interface TeamData { name: string; logo: React.ElementType; plan: string; }
-import type { NavItem, UserData, TeamData } from "../types" // Ensure TeamData is exported from ../types
+import type { NavItem, UserData, TeamData } from "../app-sidebar/types" // Ensure TeamData is exported from ../types
 import type { Dashboard, MenuItem, User } from "@/lib/data-service";
 
 // Define TeamData locally if not exported from ../types

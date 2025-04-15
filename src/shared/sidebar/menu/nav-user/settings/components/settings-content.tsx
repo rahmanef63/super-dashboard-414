@@ -3,7 +3,7 @@
 import { Moon, Sun } from "lucide-react"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { useTheme } from "@/hooks/use-theme"
+import { useTheme } from "@/src/shared/styles/hooks/use-theme"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"

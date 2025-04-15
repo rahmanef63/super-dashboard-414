@@ -12,7 +12,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
-import type { NavItem } from "../../app-sidebar/types"
+import type { NavItem } from "../../../app-sidebar/types"
 import { renderIcon } from "@/shared/icon-picker/utils"
 
 interface SubMenuProps {

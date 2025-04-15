@@ -1,7 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { NavUser } from "../nav-user";
-import { WorkspaceSwitcher } from "../workspace-switcher";
+import { NavUser } from "../menu/nav-user";
+import { WorkspaceSwitcher } from "../menu/workspace-switcher";
 import type { Workspace } from "@/types/types"; // Import from central types
 import {
 	Sidebar,
@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/sidebar";
 // Remove old hooks if logic is handled inline or via a new hook
 // import { useNavItems, useWorkspaceMenuItems, useUserData, useTeamsData } from "./hooks";
-import { useUserData } from "./hooks/use-user-data"; // Keep if still used for user formatting
+import { useUserData } from "../hooks/use-user-data"; // Keep if still used for user formatting
 
 // Import updated props type and NavItem type
 import type { AppSidebarProps, NavItem } from "./types";
-import { DynamicMenu } from "../nav-main/components/dynamic-menu";
-import { useWorkspace } from "@/src/shared/sidebar/workspace-switcher/context/workspace-context";
-import { DashboardSwitcher } from "../dashboard-switcher";
+import { DynamicMenu } from "../menu/nav-main/components/dynamic-menu";
+import { useWorkspace } from "@/src/shared/sidebar/menu/workspace-switcher/context/workspace-context";
+import { DashboardSwitcher } from "../menu/dashboard-switcher";
 import {
 	Collapsible,
 	CollapsibleTrigger,

@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import { File } from "lucide-react"
-import { MENU_ICON_MAP } from "@/src/shared/sidebar/nav-main/constants"
+import { MENU_ICON_MAP } from "@/src/shared/sidebar/menu/nav-main/constants"
 import { renderIcon } from "@/shared/icon-picker/utils"
 
 // Helper to get icon for menu item

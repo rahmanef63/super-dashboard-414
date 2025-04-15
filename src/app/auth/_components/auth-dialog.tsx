@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button" // Assuming you have a Button component
 import { LoginForm } from "./login-form"
 import { RegisterForm } from "./register-form"
-import { useToast } from "@/hooks/use-toast" // Updated import path
+import { useToast } from "@/src/shared/styles/hooks/use-toast" // Updated import path
 
 interface AuthDialogProps {
   trigger: React.ReactNode

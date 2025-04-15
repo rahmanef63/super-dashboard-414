@@ -24,7 +24,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar" // Corrected import path
-import { useToast } from "@/hooks/use-toast" // Corrected import path
+import { useToast } from "@/src/shared/styles/hooks/use-toast" // Corrected import path
 import { useMediaQuery } from "@/hooks/use-media-query" // Corrected import path
 import { useUserMenu } from "./profile/hooks/useUserMenu"
 import { USER_MENU_ITEMS } from "./profile/config/menuItems"

@@ -1,7 +1,7 @@
 "use client"
 import { SidebarGroup, SidebarGroupLabel } from "@/components/ui/sidebar"
 import { SubMenu } from "./sub-menu"
-import type { NavItem } from "../../app-sidebar/types"
+import type { NavItem } from "../../../app-sidebar/types"
 
 interface StaticMenuProps {
   items: NavItem[]
