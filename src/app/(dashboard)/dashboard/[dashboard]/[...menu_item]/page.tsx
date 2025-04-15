@@ -1,4 +1,4 @@
-import { MenuPage } from "@/app/_shared/sidebar/nav-main/components/menu-page";
+import { MenuPage } from "@/src/shared/sidebar/nav-main/components/menu-page";
 import { notFound } from 'next/navigation';
 
 interface Props {

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
+import { authOptions } from "@/src/app/auth/_lib/auth"
 import * as userService from "@/lib/data-services/user-service"
 import * as organizationService from "@/lib/data-services/organization-service"
 import * as dashboardService from "@/lib/data-services/dashboard-service"

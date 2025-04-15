@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge"
 
 import type { WorkspaceSwitcherProps } from "./types"
 import { useWorkspaceIcon } from "./hooks"
-import { useWorkspace } from "@/app/_shared/workspace/workspace-context"
+import { useWorkspace } from "@/src/shared/sidebar/workspace-switcher/context/workspace-context"
 import { dashboardHasWorkspaces, getWorkspaceType } from "@/lib/data-service"
 import React from "react"
 

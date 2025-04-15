@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createMenuUsage, getMenuUsages } from "@/lib/data-services/menu-usage-service"
-import { auth } from "@/lib/auth"
+import { auth } from "@/src/app/auth/_lib/auth"
 
 export async function GET(request: NextRequest) {
   try {

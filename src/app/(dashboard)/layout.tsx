@@ -1,10 +1,10 @@
 import type React from "react";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/src/app/auth/_lib/auth";
 import { redirect } from "next/navigation";
 import { User as NextAuthUser } from "next-auth";
-import { AppSidebar } from "@/app/_shared/sidebar/app-sidebar";
-import { WorkspaceProvider } from "@/app/_shared/workspace/workspace-context";
+import { AppSidebar } from "@/src/shared/sidebar/app-sidebar";
+import { WorkspaceProvider } from "@/src/shared/sidebar/workspace-switcher/context/workspace-context";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 // Import necessary types from your data schema/prisma client if not already available globally

@@ -32,7 +32,7 @@ import { showKeyboardShortcuts } from "./profile/utils/userActions"
 import { DynamicSheet } from "./profile/lib/DynamicSheet"
 import { DynamicDrawer } from "./profile/lib/DynamicDrawer"
 import { useEffect } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/src/app/auth/_hooks/use-auth"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function NavUser() {

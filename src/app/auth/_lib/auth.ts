@@ -3,7 +3,7 @@ import { AdapterUser } from "next-auth/adapters";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { JWT } from "next-auth/jwt";
 import bcrypt from 'bcrypt';
-import { prisma } from "./prisma";
+import { prisma } from "../../../lib/prisma";
 
 // Define a type that includes the id property we expect on the user object
 interface UserWithId extends Omit<NextAuthUser, 'image'> { 

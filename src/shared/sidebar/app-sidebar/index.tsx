@@ -1,6 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { NavUser } from "../nav-user/";
+import { NavUser } from "../nav-user";
 import { WorkspaceSwitcher } from "../workspace-switcher";
 import type { Workspace } from "@/types/types"; // Import from central types
 import {
@@ -19,7 +19,7 @@ import { useUserData } from "./hooks/use-user-data"; // Keep if still used for u
 // Import updated props type and NavItem type
 import type { AppSidebarProps, NavItem } from "./types";
 import { DynamicMenu } from "../nav-main/components/dynamic-menu";
-import { useWorkspace } from "@/app/_shared/workspace/workspace-context";
+import { useWorkspace } from "@/src/shared/sidebar/workspace-switcher/context/workspace-context";
 import { DashboardSwitcher } from "../dashboard-switcher";
 import {
 	Collapsible,

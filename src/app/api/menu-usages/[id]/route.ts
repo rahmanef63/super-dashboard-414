@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { deleteMenuUsage, getMenuUsageById, updateMenuUsage } from "@/lib/data-services/menu-usage-service"
-import { auth } from "@/lib/auth"
+import { auth } from "@/src/app/auth/_lib/auth"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {

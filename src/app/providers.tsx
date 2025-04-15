@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 
 import { ThemeProvider } from '@/shared/providers/theme-provider';
 import { ToastProvider } from '@/shared/providers/toast-provider';
-import { useAuth } from '../hooks/use-auth';
+import { useAuth } from './auth/_hooks/use-auth';
 
 interface ProvidersProps {
   children: React.ReactNode;
