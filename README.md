@@ -34,3 +34,4 @@ git add .
 git commit -m "merge remote with local"
 git push -u origin master
 ```
+help me please
