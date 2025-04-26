@@ -1,0 +1,16 @@
+Default Dashboard ID: a83f5dd3-a1fd-4d84-849e-783e28ab5772
+Workspace ID: fe3fa191-b5c9-42f4-88c3-9dd4b39f43ad
+Menu Item ID: 7ab1712e-8e8a-4755-ab3c-70274625315f
+
+Add this to your .env file:
+DEFAULT_DASHBOARD_ID=a83f5dd3-a1fd-4d84-849e-783e28ab5772
+
+Add this code to your user creation logic:
+
+// When creating a new user:
+await prisma.dashboardAssignment.create({
+  data: {
+    userId: newUserId,
+    dashboardId: "a83f5dd3-a1fd-4d84-849e-783e28ab5772"
+  }
+});

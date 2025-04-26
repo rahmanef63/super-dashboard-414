@@ -1,9 +1,14 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, LineChart, PieChart, ArrowUpRight, Users, Eye, MousePointerClick, Clock } from "lucide-react"
+import { useState } from "react";
+import LoginModal from "./LoginModal";
 
 export default function MarketingHomePage() {
+  const [showLogin, setShowLogin] = useState(false);
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -13,12 +18,15 @@ export default function MarketingHomePage() {
             Welcome to your marketing dashboard. Here's an overview of your campaigns.
           </p>
           <p className="mb-6">Please sign in to continue</p>
-        <a
-          href="/auth/login"
+        {/* Login Dialog Trigger Button */}
+        <button
+          type="button"
+          onClick={() => setShowLogin(true)}
           className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
         >
           Go to Login
-        </a>
+        </button>
+        <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
         </div>
         <div className="flex items-center gap-2">
           <Button>New Campaign</Button>

@@ -1,11 +1,10 @@
-import type React from "react"
-import type { Dashboard } from "@/lib/data-service"
+import type { SidebarBaseProps, Dashboard } from '../../../types';
 
-export interface DashboardSwitcherProps {
+export interface DashboardSwitcherProps extends SidebarBaseProps {
   teams?: {
-    name: string
-    logo: React.ElementType
-    plan: string
-  }[]
-  dashboard?: Dashboard
+    name: string;
+    logo: React.ElementType;
+    plan: string;
+  }[];
+  dashboard?: Dashboard;
 }

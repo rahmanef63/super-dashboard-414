@@ -1,0 +1,81 @@
+{
+  "ai": {
+    "ai-instance.ts": null,
+    "dev.ts": null,
+    "flows": {
+      "smart-due-date-suggestion.ts": null
+    }
+  },
+  "app": {
+    "error.tsx": null,
+    "global-error.tsx": null,
+    "globals.css": null,
+    "layout.tsx": null,
+    "not-found.tsx": null,
+    "page.tsx": null,
+    "providers.tsx": null,
+    "(dashboard)": "<truncated>",
+    "(marketing)": "<truncated>",
+    "api": "<truncated>",
+    "auth": "<truncated>"
+  },
+  "components": {
+    "icons.ts": null,
+    "ui": "<truncated>"
+  },
+  "hooks": {
+    "use-initialize-user.ts": null,
+    "use-media-query.tsx": null,
+    "use-workspace.ts": null
+  },
+  "lib": {
+    "api-client": {
+      "index.ts": null
+    },
+    "data-service.ts": null,
+    "data-services": "<truncated>",
+    "middleware": {
+      "auth-middleware.ts": null
+    },
+    "prisma.ts": null,
+    "utils.ts": null
+  },
+  "middleware.ts": null,
+  "services": {
+    "date-suggestion.ts": null
+  },
+  "shared": {
+    "dashboard-store": "<truncated>",
+    "database-management": "<truncated>",
+    "dev-tools": "<truncated>",
+    "icon-picker": "<truncated>",
+    "providers": {
+      "session-provider.tsx": null,
+      "theme-provider.tsx": null,
+      "toast-provider.tsx": null
+    },
+    "sidebar": "<truncated>",
+    "status": {
+      "Error.tsx": null,
+      "Loading.tsx": null,
+      "Skeleton.tsx": null
+    },
+    "styles": {
+      "hooks": {
+        "use-mobile.tsx": null,
+        "use-theme.tsx": null,
+        "use-toast.ts": null
+      },
+      "responsive": {
+        "index.ts": null,
+        "responsive-dialog.tsx": null,
+        "responsive-drawer.tsx": null,
+        "responsive-menu.tsx": null,
+        "examples": {
+          "dialog-example.tsx": null,
+          "menu-example.tsx": null
+        }
+      }
+    }
+  }
+}

@@ -1,12 +1,22 @@
 import type { DashboardAssignment } from "@prisma/client"
-import prisma from "../prisma"
+import { prisma } from "../prisma"
+
+function handlePrismaError(context: string, error: unknown): never {
+  if (error instanceof Error) {
+    console.error(`${context}:`, error.message);
+    throw new Error(`${context}: ${error.message}`);
+  } else {
+    console.error(`${context}:`, error);
+    throw new Error(`${context}: Unknown error`);
+  }
+}
 
 /**
  * Get all assignments for a specific dashboard
  * @param dashboardId The ID of the dashboard
  * @returns Array of dashboard assignments with user details
  */
-export const getAssignmentsForDashboard = async (dashboardId: string): Promise<DashboardAssignment[]> => {
+export const getAssignmentsForDashboard = async (dashboardId: string): Promise<DashboardAssignment[] | undefined> => {
   try {
     return await prisma.dashboardAssignment.findMany({
       where: { dashboardId },
@@ -16,7 +26,7 @@ export const getAssignmentsForDashboard = async (dashboardId: string): Promise<D
             id: true,
             name: true,
             email: true,
-            image: true,
+            
           },
         },
       },
@@ -25,8 +35,8 @@ export const getAssignmentsForDashboard = async (dashboardId: string): Promise<D
       },
     })
   } catch (error) {
-    console.error(`Error fetching assignments for dashboard ${dashboardId}:`, error)
-    throw new Error(`Failed to fetch dashboard assignments: ${error.message}`)
+    handlePrismaError(`Error fetching assignments for dashboard ${dashboardId}`, error);
+    return undefined;
   }
 }
 
@@ -35,7 +45,7 @@ export const getAssignmentsForDashboard = async (dashboardId: string): Promise<D
  * @param userId The ID of the user
  * @returns Array of dashboard assignments with dashboard details
  */
-export const getAssignmentsForUser = async (userId: string): Promise<DashboardAssignment[]> => {
+export const getAssignmentsForUser = async (userId: string): Promise<DashboardAssignment[] | undefined> => {
   try {
     return await prisma.dashboardAssignment.findMany({
       where: { userId },
@@ -47,8 +57,8 @@ export const getAssignmentsForUser = async (userId: string): Promise<DashboardAs
       },
     })
   } catch (error) {
-    console.error(`Error fetching dashboard assignments for user ${userId}:`, error)
-    throw new Error(`Failed to fetch user's dashboard assignments: ${error.message}`)
+    handlePrismaError(`Error fetching dashboard assignments for user ${userId}`, error);
+    return undefined;
   }
 }
 
@@ -62,7 +72,7 @@ export const assignUserToDashboard = async (data: {
   userId: string
   canEdit?: boolean
   assignedById?: string
-}): Promise<DashboardAssignment> => {
+}): Promise<DashboardAssignment | undefined> => {
   try {
     // Check if assignment already exists
     const existingAssignment = await prisma.dashboardAssignment.findFirst({
@@ -76,8 +86,8 @@ export const assignUserToDashboard = async (data: {
       return await prisma.dashboardAssignment.update({
         where: { id: existingAssignment.id },
         data: {
-          canEdit: data.canEdit ?? existingAssignment.canEdit,
-          assignedById: data.assignedById ?? existingAssignment.assignedById,
+          
+          
         },
         include: {
           user: {
@@ -85,7 +95,7 @@ export const assignUserToDashboard = async (data: {
               id: true,
               name: true,
               email: true,
-              image: true,
+              
             },
           },
           dashboard: true,
@@ -97,8 +107,8 @@ export const assignUserToDashboard = async (data: {
       data: {
         dashboardId: data.dashboardId,
         userId: data.userId,
-        canEdit: data.canEdit ?? false,
-        assignedById: data.assignedById,
+        
+        
       },
       include: {
         user: {
@@ -106,15 +116,15 @@ export const assignUserToDashboard = async (data: {
             id: true,
             name: true,
             email: true,
-            image: true,
+            
           },
         },
         dashboard: true,
       },
     })
   } catch (error) {
-    console.error(`Error assigning user ${data.userId} to dashboard ${data.dashboardId}:`, error)
-    throw new Error(`Failed to assign user to dashboard: ${error.message}`)
+    handlePrismaError(`Error assigning user ${data.userId} to dashboard ${data.dashboardId}`, error);
+    return undefined;
   }
 }
 
@@ -126,10 +136,8 @@ export const assignUserToDashboard = async (data: {
  */
 export const updateDashboardAssignment = async (
   id: string,
-  data: {
-    canEdit?: boolean
-  },
-): Promise<DashboardAssignment> => {
+  data: Partial<Omit<DashboardAssignment, 'id'>>, // Only allow schema fields except id
+): Promise<DashboardAssignment | undefined> => {
   try {
     return await prisma.dashboardAssignment.update({
       where: { id },
@@ -140,15 +148,15 @@ export const updateDashboardAssignment = async (
             id: true,
             name: true,
             email: true,
-            image: true,
+            
           },
         },
         dashboard: true,
       },
     })
   } catch (error) {
-    console.error(`Error updating dashboard assignment ${id}:`, error)
-    throw new Error(`Failed to update dashboard assignment: ${error.message}`)
+    handlePrismaError(`Error updating dashboard assignment ${id}`, error);
+    return undefined;
   }
 }
 
@@ -157,14 +165,14 @@ export const updateDashboardAssignment = async (
  * @param id The ID of the assignment to remove
  * @returns The deleted dashboard assignment
  */
-export const removeUserFromDashboard = async (id: string): Promise<DashboardAssignment> => {
+export const removeUserFromDashboard = async (id: string): Promise<DashboardAssignment | undefined> => {
   try {
     return await prisma.dashboardAssignment.delete({
       where: { id },
     })
   } catch (error) {
-    console.error(`Error removing dashboard assignment ${id}:`, error)
-    throw new Error(`Failed to remove user from dashboard: ${error.message}`)
+    handlePrismaError(`Error removing dashboard assignment ${id}`, error);
+    return undefined;
   }
 }
 
@@ -179,9 +187,9 @@ export const bulkAssignUsersToDashboard = async (
   dashboardId: string,
   userIds: string[],
   assignedById?: string,
-): Promise<DashboardAssignment[]> => {
+): Promise<DashboardAssignment[] | undefined> => {
   try {
-    const assignments = []
+    const assignments: DashboardAssignment[] = []
 
     // Use a transaction to ensure all assignments are created or none
     await prisma.$transaction(async (tx) => {
@@ -198,9 +206,7 @@ export const bulkAssignUsersToDashboard = async (
           const assignment = await tx.dashboardAssignment.create({
             data: {
               dashboardId,
-              userId,
-              canEdit: false,
-              assignedById,
+              userId
             },
           })
           assignments.push(assignment)
@@ -210,7 +216,7 @@ export const bulkAssignUsersToDashboard = async (
 
     return assignments
   } catch (error) {
-    console.error(`Error bulk assigning users to dashboard ${dashboardId}:`, error)
-    throw new Error(`Failed to bulk assign users to dashboard: ${error.message}`)
+    handlePrismaError(`Error bulk assigning users to dashboard ${dashboardId}`, error);
+    return undefined;
   }
 }

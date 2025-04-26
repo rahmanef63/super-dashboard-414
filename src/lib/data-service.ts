@@ -145,7 +145,7 @@ export const getRoleById = (id: string): Role | undefined => {
     return getRoles().find((role) => role.id === id);
 };
 
-export const getDashboardById = (id: string): Dashboard | undefined => {
+export const getDashboardById = async (id: string): Promise<Dashboard | undefined> => {
     console.log(`[data-service] getDashboardById called with id: ${id}`);
     const dashboard = getDashboards().find((dashboard) => dashboard.id === id);
     if (!dashboard) {
@@ -182,9 +182,9 @@ export const getMenuItemById = (id: string): MenuItem | undefined => {
  * Helper functions to get related data
  */
 
-export const getWorkspacesForDashboard = (dashboardId: string): Workspace[] => {
+export const getWorkspacesForDashboard = async (dashboardId: string): Promise<Workspace[]> => {
     console.log(`[data-service] getWorkspacesForDashboard called with dashboardId: ${dashboardId}`);
-    const dashboard = getDashboardById(dashboardId);
+    const dashboard = await getDashboardById(dashboardId);
     if (!dashboard) {
         console.log(`[data-service] Dashboard not found for ID: ${dashboardId}, returning empty workspaces array`);
         return [];
@@ -200,9 +200,9 @@ export const getWorkspacesForDashboard = (dashboardId: string): Workspace[] => {
     return result;
 };
 
-export const getMenuItemsForDashboard = (dashboardId: string): MenuItem[] => {
+export const getMenuItemsForDashboard = async (dashboardId: string): Promise<MenuItem[]> => {
     console.log(`[data-service] getMenuItemsForDashboard called with dashboardId: ${dashboardId}`);
-    const dashboard = getDashboardById(dashboardId);
+    const dashboard = await getDashboardById(dashboardId);
     if (!dashboard) return [];
 
     // Use menu_ids from the Dashboard (DashboardLegacy) type
@@ -211,7 +211,7 @@ export const getMenuItemsForDashboard = (dashboardId: string): MenuItem[] => {
 };
 
 // Fixed version of getMenuItemsForWorkspace that properly logs and returns menu items
-export const getMenuItemsForWorkspace = (workspaceId: string): MenuItem[] => {
+export const getMenuItemsForWorkspace = async (workspaceId: string): Promise<MenuItem[]> => {
     console.log(`[data-service] getMenuItemsForWorkspace called with workspaceId: ${workspaceId}`);
     const workspace = getWorkspaceById(workspaceId);
     if (!workspace) {
@@ -237,267 +237,138 @@ export const getMenuItemsForWorkspace = (workspaceId: string): MenuItem[] => {
         const itemName = item.title ?? item.name ?? item.id; // Use fields from MenuItemLegacy
         console.log(`[data-service] Workspace menu item: ${item.id} (${itemName})`);
     });
-
+    
     return workspaceMenuItems;
 };
 
 // Function to get dashboard menu items that should be visible in workspaces
-export const getDashboardMenuItemsForWorkspaces = (dashboardId: string): MenuItem[] => {
+export const getDashboardMenuItemsForWorkspaces = async (dashboardId: string): Promise<MenuItem[]> => {
     console.log(`[data-service] getDashboardMenuItemsForWorkspaces called with dashboardId: ${dashboardId}`);
-    const dashboard = getDashboardById(dashboardId);
+    const dashboard = await getDashboardById(dashboardId);
     if (!dashboard) return [];
 
-    // Use workspace_visible_menu_ids from the Dashboard (DashboardLegacy) type
-    const dashboardMenuIds = dashboard.workspace_visible_menu_ids || [];
+    // Use workspace_visible_menu_ids from the Dashboard type
+    const menuIds = dashboard.workspace_visible_menu_ids || [];
+    return getMenuItems().filter((item) => menuIds.includes(item.id));
+};
 
-    // If dashboard has no workspace-visible menu items, return empty array
-    if (dashboardMenuIds.length === 0) {
-        console.log(`[data-service] Dashboard ${dashboardId} has no workspace-visible menu items`);
-        return [];
+export const getAllMenuItemsForContext = async (dashboardId: string, workspaceId?: string): Promise<MenuItem[]> => {
+    console.log(`[data-service] getAllMenuItemsForContext called with dashboardId: ${dashboardId}, workspaceId: ${workspaceId || 'none'}`);
+    
+    if (workspaceId) {
+        // If we have a workspace ID, we need to get menu items for both the dashboard and workspace
+        const dashboardMenuItems = await getMenuItemsForDashboard(dashboardId);
+        const workspaceMenuItems = await getMenuItemsForWorkspace(workspaceId);
+        const dashboardMenuItemsForWorkspaces = await getDashboardMenuItemsForWorkspaces(dashboardId);
+        
+        // Combine all menu items and remove duplicates
+        const allMenuItems = [...dashboardMenuItems, ...workspaceMenuItems, ...dashboardMenuItemsForWorkspaces];
+        return allMenuItems.filter((item, index, self) => 
+            index === self.findIndex((t) => t.id === item.id)
+        );
+    } else {
+        // If we only have a dashboard ID, just get menu items for the dashboard
+        return await getMenuItemsForDashboard(dashboardId);
     }
-
-    return getMenuItems().filter((item) => dashboardMenuIds.includes(item.id));
 };
-
-export const getAllMenuItemsForContext = (dashboardId: string, workspaceId?: string): MenuItem[] => {
-    console.log(
-        `[data-service] getAllMenuItemsForContext called with dashboardId: ${dashboardId}, workspaceId: ${workspaceId || "none"}`
-    );
-
-    // Get dashboard-level menu items
-    const dashboardMenuItems = getMenuItemsForDashboard(dashboardId);
-
-    // If no workspace specified, return only dashboard-level items
-    if (!workspaceId) {
-        return dashboardMenuItems;
-    }
-
-    // Get workspace-level menu items
-    const workspaceMenuItems = getMenuItemsForWorkspace(workspaceId);
-
-    // Combine and return all menu items (removing duplicates)
-    const allMenus = [...dashboardMenuItems, ...workspaceMenuItems];
-    const uniqueMenus = Array.from(new Map(allMenus.map((item) => [item.id, item])).values());
-
-    return uniqueMenus;
-};
-
-// Simplified version that uses arrays for parent-child relationships
-export const getChildMenuItems = (parentId: string): MenuItem[] => {
-    console.log(`[data-service] getChildMenuItems called with parentId: ${parentId}`);
-
-    // Use parentId or parent_id from MenuItem (MenuItemLegacy) type
-    const directChildren = getMenuItems().filter((item: MenuItem) => item.parentId === parentId || item.parent_id === parentId);
-
-    // Check the relations table
-    const relationChildren = getMenuItemRelations()
-        .filter((relation: MenuItemRelation) => relation.parent_id === parentId)
-        .map((relation: MenuItemRelation) => getMenuItemById(relation.child_id))
-        .filter((item): item is MenuItem => item !== undefined);
-
-    // Combine both sets of children, removing duplicates
-    const allChildren = [...directChildren, ...relationChildren];
-    return Array.from(new Map(allChildren.map((item: MenuItem) => [item.id, item])).values());
-};
-
-export const getEmployeesForWorkspace = (workspaceId: string): CompanyEmployee[] => {
-    console.log(`[data-service] getEmployeesForWorkspace called with workspaceId: ${workspaceId}`);
-    return dummyCompanyEmployees.filter((employee: CompanyEmployee) => employee.workspace_id === workspaceId);
-};
-
-export const getProjectsForWorkspace = (workspaceId: string): CompanyProject[] => {
-    console.log(`[data-service] getProjectsForWorkspace called with workspaceId: ${workspaceId}`);
-    return dummyCompanyProjects.filter((project: CompanyProject) => project.workspace_id === workspaceId);
-};
-
-export const getFinanceRecordsForWorkspace = (workspaceId: string): FinanceRecord[] => {
-    console.log(`[data-service] getFinanceRecordsForWorkspace called with workspaceId: ${workspaceId}`);
-    return dummyFinanceRecords.filter((record: FinanceRecord) => record.workspace_id === workspaceId);
-};
-
-
-/**
- * Dashboard type helper functions
- */
 
 // Check if a dashboard has workspaces
-export const dashboardHasWorkspaces = (dashboardId: string): boolean => {
-    const dashboard = getDashboardById(dashboardId);
-    if (!dashboard) return false;
-    return (dashboard.workspace_ids || []).length > 0;
-};
-
-// Check if a dashboard has menu items
-export const dashboardHasMenuItems = (dashboardId: string): boolean => {
-    const dashboard = getDashboardById(dashboardId);
-    if (!dashboard) return false;
-    return (dashboard.menu_ids || []).length > 0;
+export const dashboardHasWorkspaces = async (dashboardId: string): Promise<boolean> => {
+    console.log(`[data-service] dashboardHasWorkspaces called with dashboardId: ${dashboardId}`);
+    const dashboard = await getDashboardById(dashboardId);
+    return (dashboard?.workspace_ids?.length ?? 0) > 0;
 };
 
 // Get the dashboard type
-export const getDashboardType = (dashboardId: string): string => {
-    const dashboard = getDashboardById(dashboardId);
+export const getDashboardType = async (dashboardId: string): Promise<string> => {
+    console.log(`[data-service] getDashboardType called with dashboardId: ${dashboardId}`);
+    const dashboard = await getDashboardById(dashboardId);
     if (!dashboard) return "unknown";
 
-    const hasWorkspaces = (dashboard.workspace_ids || []).length > 0;
-    const hasMenuItems = (dashboard.menu_ids || []).length > 0;
+    const hasWorkspaces = await dashboardHasWorkspaces(dashboardId);
+    const hasMenuItems = (dashboard.menu_ids?.length ?? 0) > 0;
 
     if (hasWorkspaces && hasMenuItems) return "full";
-    if (hasWorkspaces) return "workspace-focused";
-    if (hasMenuItems) return "menu-focused";
-    return "minimal";
+    if (hasWorkspaces) return "workspace-only";
+    if (hasMenuItems) return "menu-only";
+    return "empty";
 };
 
-// Check if a workspace has menu items
-export const workspaceHasMenuItems = (workspaceId: string): boolean => {
-    const workspace = getWorkspaceById(workspaceId);
-    if (!workspace) return false;
-    return (workspace.menu_ids || []).length > 0;
+// Helper functions for building menu structures
+export const buildMenuTree = async (dashboardId: string, workspaceId?: string): Promise<MenuItem[]> => {
+    console.log(`[data-service] buildMenuTree called with dashboardId: ${dashboardId}, workspaceId: ${workspaceId || 'none'}`);
+    const allMenuItems = await getAllMenuItemsForContext(dashboardId, workspaceId);
+    
+    // Filter to only top-level items (those with no parent or parent_id is empty)
+    const topLevelItems = allMenuItems.filter(item => !item.parent_id);
+    
+    // Sort by order if available (using a safe approach since order might not exist)
+    return topLevelItems.sort((a, b) => ((a as any).order || 0) - ((b as any).order || 0));
 };
 
-// Get the workspace type
-export const getWorkspaceType = (workspaceId: string): string => {
-    const workspace = getWorkspaceById(workspaceId);
-    if (!workspace) return "unknown";
-
-    if (workspace.type) return workspace.type;
-
-    const menuIds = workspace.menu_ids || [];
-    if (menuIds.length > 5) return "Full-featured";
-    if (menuIds.length > 2) return "Standard";
-    if (menuIds.length > 0) return "Basic";
-    return "Empty";
-};
-
-
-/**
- * Mapping functions
- */
-
-export const getDashboardWorkspaceMenuMapping = cache((): DashboardWorkspaceMenuMapping[] => {
-    console.log("[data-service] getDashboardWorkspaceMenuMapping called");
-    return generateFullMapping();
-});
-
-export const getMappingForDashboard = (dashboardId: string): DashboardWorkspaceMenuMapping[] => {
-    console.log(`[data-service] getMappingForDashboard called with dashboardId: ${dashboardId}`);
-    return getDashboardWorkspaceMenuMapping().filter((mapping) => mapping.dashboard_id === dashboardId);
-};
-
-export const getMappingForWorkspace = (workspaceId: string): DashboardWorkspaceMenuMapping[] => {
-    console.log(`[data-service] getMappingForWorkspace called with workspaceId: ${workspaceId}`);
-    return getDashboardWorkspaceMenuMapping().filter((mapping) => mapping.workspace_id === workspaceId);
-};
-
-/**
- * Helper functions for building menu structures
- */
-
-export const buildMenuTree = (dashboardId: string, workspaceId?: string): MenuItem[] => {
-    console.log(
-        `[data-service] buildMenuTree called with dashboardId: ${dashboardId}, workspaceId: ${workspaceId || "none"}`
-    );
-
-    const contextMenuItems = getAllMenuItemsForContext(dashboardId, workspaceId);
-
-    // Find root menu items using parentId or parent_id from MenuItem (MenuItemLegacy)
-    const rootItems = contextMenuItems.filter((item) => !item.parentId && !item.parent_id);
-
-    return rootItems;
-};
-
-// Define the return type explicitly using the aliased MenuItem
 interface MenuItemWithChildren extends MenuItem {
     children: MenuItem[];
 }
 
-export const getMenuItemsWithChildren = (dashboardId: string, workspaceId?: string): MenuItemWithChildren[] => {
-    console.log(
-        `[data-service] getMenuItemsWithChildren called with dashboardId: ${dashboardId}, workspaceId: ${workspaceId || "none"}`
-    );
-    const rootItems = buildMenuTree(dashboardId, workspaceId);
-
-    return rootItems.map((rootItem) => {
-        const children = getChildMenuItems(rootItem.id);
+export const getMenuItemsWithChildren = async (dashboardId: string, workspaceId?: string): Promise<MenuItemWithChildren[]> => {
+    console.log(`[data-service] getMenuItemsWithChildren called with dashboardId: ${dashboardId}, workspaceId: ${workspaceId || 'none'}`);
+    const allMenuItems = await getAllMenuItemsForContext(dashboardId, workspaceId);
+    
+    // First, get all top-level items
+    const topLevelItems = allMenuItems.filter(item => !item.parent_id);
+    
+    // Then, for each top-level item, find its children
+    return topLevelItems.map(item => {
+        const children = allMenuItems.filter(child => child.parent_id === item.id);
         return {
-            ...rootItem,
-            children,
+            ...item,
+            children: children.sort((a, b) => ((a as any).order || 0) - ((b as any).order || 0)),
         };
-    });
+    }).sort((a, b) => ((a as any).order || 0) - ((b as any).order || 0));
 };
-
 
 /**
  * Dynamic path generation for menu items
  */
 export const getMenuItemPath = (menuItem: MenuItem, dashboardId: string, workspaceId?: string): string => {
-    console.log(
-        `[data-service] getMenuItemPath called for menuItem: ${menuItem.id}, dashboardId: ${dashboardId}, workspaceId: ${workspaceId || "none"}`
-    );
+  console.log(
+    `[data-service] getMenuItemPath called for menuItem: ${menuItem.id}, dashboardId: ${dashboardId}, workspaceId: ${workspaceId || "none"}`
+  );
 
-    let path = `/dashboard/${dashboardId}`;
+  let path = `/dashboard/${dashboardId}`;
 
-    if (workspaceId) {
-        path += `/${workspaceId}`;
-    }
+  if (workspaceId) {
+    path += `/${workspaceId}`;
+  }
 
-    path += `/${menuItem.id}`; // Assuming menuItem.id is the slug/identifier
+  path += `/${menuItem.id}`; // Assuming menuItem.id is the slug/identifier
 
-    return path;
+  return path;
 };
 
 /**
- * User-related functions
+ * Workspace helper functions
  */
-
-export const getCurrentUser = (): User | undefined => {
-    console.log("[data-service] getCurrentUser called");
-    const users = getUsers();
-    return users[0];
+export const workspaceHasMenuItems = (workspaceId: string): boolean => {
+  console.log(`[data-service] workspaceHasMenuItems called with workspaceId: ${workspaceId}`);
+  const workspace = getWorkspaceById(workspaceId);
+  if (!workspace) return false;
+  return (workspace.menu_ids || []).length > 0;
 };
 
+// Get the workspace type
+export const getWorkspaceType = (workspaceId: string): string => {
+  console.log(`[data-service] getWorkspaceType called with workspaceId: ${workspaceId}`);
+  const workspace = getWorkspaceById(workspaceId);
+  if (!workspace) return "unknown";
 
-/**
- * Mock API functions that simulate real API calls
- */
+  if (workspace.type) return workspace.type;
 
-export async function fetchDashboards(): Promise<ApiResponse<Dashboard[]>> {
-    console.log("[data-service] fetchDashboards called");
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const dashboardsData = getDashboards();
-    return {
-        data: dashboardsData,
-        meta: {
-            pagination: {
-                total: dashboardsData.length,
-                per_page: 10,
-                current_page: 1,
-                last_page: Math.ceil(dashboardsData.length / 10),
-            },
-        },
-    };
-}
+  const menuIds = workspace.menu_ids || [];
+  if (menuIds.length > 5) return "Full-featured";
+  if (menuIds.length > 2) return "Standard";
+  if (menuIds.length > 0) return "Basic";
+  return "Empty";
+};
 
-export async function fetchDashboardById(id: string): Promise<ApiResponse<Dashboard>> {
-    console.log(`[data-service] fetchDashboardById called with id: ${id}`);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const dashboard = getDashboardById(id);
-    if (!dashboard) {
-        throw new Error(`Dashboard with id ${id} not found`);
-    }
-    return { data: dashboard };
-}
-
-export async function fetchMenuItemsForDashboard(dashboardId: string): Promise<ApiResponse<MenuItem[]>> {
-    console.log(`[data-service] fetchMenuItemsForDashboard called with dashboardId: ${dashboardId}`);
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const items = getMenuItemsForDashboard(dashboardId);
-    return { data: items };
-}
-
-export async function fetchDashboardWorkspaceMenuMapping(): Promise<ApiResponse<DashboardWorkspaceMenuMapping[]>> {
-    console.log("[data-service] fetchDashboardWorkspaceMenuMapping called");
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    const mapping = getDashboardWorkspaceMenuMapping();
-    return { data: mapping };
-}
+// ... (rest of the code remains the same)

@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import type { ResizableSectionProps } from "../types/resizable"
+import type { ResizableSectionProps } from "../../../dev-tools/resizable"
 
 export function ResizableSection({
   children,

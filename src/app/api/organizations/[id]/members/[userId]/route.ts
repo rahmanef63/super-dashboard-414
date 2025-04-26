@@ -1,23 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { requireAuth } from "@/lib/middleware/auth-middleware"
+import { prisma } from "@/lib/prisma"
+import { getToken } from "next-auth/jwt"
 
 // GET /api/organizations/[id]/members/[userId] - Get details of a specific member
 export async function GET(req: NextRequest, { params }: { params: { id: string; userId: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { id: organizationId, userId: memberId } = params
-
+    const userId = token.sub;
+    const { id: organizationId, userId: memberId } = params;
     // Check if user has access to the organization
     const hasAccess = await prisma.organizationMembership.findFirst({
       where: {
         organizationId,
-        userId: user.id,
+        userId: userId,
         status: "ACTIVE",
       },
     })
@@ -40,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string; 
             email: true,
           },
         },
-        role: true,
+        orgRole: true,
       },
     })
 
@@ -58,29 +56,27 @@ export async function GET(req: NextRequest, { params }: { params: { id: string; 
 // PATCH /api/organizations/[id]/members/[userId] - Update member role
 export async function PATCH(req: NextRequest, { params }: { params: { id: string; userId: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { id: organizationId, userId: memberId } = params
-    const { roleId } = await req.json()
-
+    const userId = token.sub;
+    const { id: organizationId, userId: memberId } = params;
+    const { orgRoleId } = await req.json();
     // Check if user has permission to update members
     const currentUserMembership = await prisma.organizationMembership.findFirst({
       where: {
         organizationId,
-        userId: user.id,
+        userId: userId,
         status: "ACTIVE",
-        role: {
+        orgRole: {
           name: {
             in: ["OWNER", "ADMIN"], // Only owners and admins can update members
           },
         },
       },
       include: {
-        role: true,
+        orgRole: true,
       },
     })
 
@@ -95,7 +91,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         userId: memberId,
       },
       include: {
-        role: true,
+        orgRole: true,
       },
     })
 
@@ -104,9 +100,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // Check if the role exists and belongs to the organization
-    const newRole = await prisma.organizationRole.findFirst({
+    const newRole = await prisma.orgRole.findFirst({
       where: {
-        id: roleId,
+        id: orgRoleId,
         organizationId,
       },
     })
@@ -116,7 +112,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // Prevent non-owners from modifying owner roles
-    if (memberToUpdate.role.name === "OWNER" && currentUserMembership.role.name !== "OWNER") {
+    if (memberToUpdate.orgRole?.name === "OWNER" && currentUserMembership.orgRole?.name !== "OWNER") {
       return NextResponse.json({ error: "Forbidden: Only owners can modify owner roles" }, { status: 403 })
     }
 
@@ -126,7 +122,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         id: memberToUpdate.id,
       },
       data: {
-        roleId,
+        orgRoleId,
         updatedAt: new Date(),
       },
       include: {
@@ -137,7 +133,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
             email: true,
           },
         },
-        role: true,
+        orgRole: true,
       },
     })
 
@@ -151,28 +147,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // DELETE /api/organizations/[id]/members/[userId] - Remove a member from the organization
 export async function DELETE(req: NextRequest, { params }: { params: { id: string; userId: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const { id: organizationId, userId: memberId } = params
-
+    const userId = token.sub;
+    const { id: organizationId, userId: memberId } = params;
     // Check if user has permission to remove members
     const currentUserMembership = await prisma.organizationMembership.findFirst({
       where: {
         organizationId,
-        userId: user.id,
+        userId: userId,
         status: "ACTIVE",
-        role: {
+        orgRole: {
           name: {
             in: ["OWNER", "ADMIN"], // Only owners and admins can remove members
           },
         },
       },
       include: {
-        role: true,
+        orgRole: true,
       },
     })
 
@@ -187,7 +181,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         userId: memberId,
       },
       include: {
-        role: true,
+        orgRole: true,
       },
     })
 
@@ -196,16 +190,16 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     // Prevent non-owners from removing owners
-    if (memberToRemove.role.name === "OWNER" && currentUserMembership.role.name !== "OWNER") {
+    if (memberToRemove.orgRole?.name === "OWNER" && currentUserMembership.orgRole?.name !== "OWNER") {
       return NextResponse.json({ error: "Forbidden: Only owners can remove owners" }, { status: 403 })
     }
 
     // Prevent removing the last owner
-    if (memberToRemove.role.name === "OWNER") {
+    if (memberToRemove.orgRole?.name === "OWNER") {
       const ownerCount = await prisma.organizationMembership.count({
         where: {
           organizationId,
-          role: {
+          orgRole: {
             name: "OWNER",
           },
         },

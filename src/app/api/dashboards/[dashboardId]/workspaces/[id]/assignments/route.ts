@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 import { requireAuth } from "@/lib/middleware/auth-middleware"
 
 // GET /api/dashboards/[dashboardId]/workspaces/[id]/assignments - Get all assignments for a workspace

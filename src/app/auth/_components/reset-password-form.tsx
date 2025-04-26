@@ -39,15 +39,11 @@ export function ResetPasswordForm() {
     toast({
       title: "Not Implemented",
       description: "Password reset is not yet implemented.",
-      toast({
-        variant: "default",
-      })
-
-      router.push("/auth/login?reset=success")
-    } catch (error) {
-      setError("An unexpected error occurred")
-    } finally {
-    }
+      variant: "default",
+    });
+    router.push("/auth/login?reset=success")
+    setIsLoading(false);
+    return;
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react";
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,63 +10,107 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react" 
 import { signIn } from "next-auth/react"
 import Link from "next/link"
+import { useToast } from "@/shared/styles/hooks/use-toast"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false) // Added loading state
+  const [isLoading, setIsLoading] = useState(false) 
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const { toast } = useToast();
+
+  // Log when the login form mounts
+  React.useEffect(() => {
+    console.log('[LoginForm] Component mounted: user is on the login form page/modal');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null) 
-    setIsLoading(true) // Set loading true
+    setIsLoading(true) 
 
     const signInData = {
       email,
       password,
-      redirect: false, // Handle redirect manually
+      redirect: false, 
     };
+    // Mask password for logging
+    const maskedSignInData = { ...signInData, password: password ? '***' : undefined };
+    console.log('[LoginForm] Submitting credentials to signIn:', maskedSignInData);
 
     try {
-      console.log(`Attempting sign in for ${email}, redirect target: ${redirectTo}`); 
-      // *** ADDED LOG ***
-      console.log("Calling signIn with:", 'credentials', signInData);
       const result = await signIn('credentials', signInData);
-      console.log("Sign-in Result:", result); 
-
+      console.log('[LoginForm] signIn result:', result);
+      // Extra tracker: fetch session after signIn
+      try {
+        const res = await fetch('/api/auth/session');
+        const session = await res.json();
+        console.log('[LoginForm] Session after signIn:', session);
+      } catch (err) {
+        console.error('[LoginForm] Error fetching session after signIn:', err);
+      }
       if (result?.error) {
-        console.error("Sign-in error:", result.error);
-        // Map common errors to user-friendly messages
         if (result.error === "CredentialsSignin") {
           setError("Invalid email or password. Please try again.");
+          toast({
+            title: "Login Failed",
+            description: "Invalid email or password. Please try again.",
+            variant: "destructive",
+          });
         } else if (result.error === "Callback" || result.error === "Signin") {
-           setError("Could not sign in. Please try again later.");
+          setError("Could not sign in. Please try again later.");
+          toast({
+            title: "Login Error",
+            description: "Could not sign in. Please try again later.",
+            variant: "destructive",
+          });
         } else {
-          setError(result.error); // Show other errors directly (less ideal)
+          setError(result.error);
+          toast({
+            title: "Login Error",
+            description: result.error,
+            variant: "destructive",
+          });
         }
       } else if (result?.ok) {
-        console.log(`Sign-in successful, redirecting to: ${redirectTo}`);
+        toast({
+          title: "Login Successful",
+          description: "You have successfully logged in.",
+          variant: "default",
+        });
         router.push(redirectTo);
-        // Refresh might be needed if server components depend on session
-        // router.refresh(); 
-      } else {
-        console.error("Sign-in failed with unknown status:", result);
-        setError("An unknown error occurred during sign-in.");
       }
     } catch (err) {
-      console.error("Sign-in component exception:", err);
-      setError("An unexpected error occurred."); 
+      setError("An unexpected error occurred.");
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
     } finally {
-      setIsLoading(false); // Set loading false
+      setIsLoading(false); 
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onFocus={() => console.log('[LoginForm] User focused the login form')}
+      onSubmit={async (e) => {
+        console.log('[LoginForm] User clicked login button (form submit)');
+        console.log('[LoginForm] Form submit event:', e);
+        await handleSubmit(e);
+        // After handleSubmit, log the current location and session
+        console.log('[LoginForm] After handleSubmit, window.location:', window.location.href);
+        try {
+          const res = await fetch('/api/auth/session');
+          const session = await res.json();
+          console.log('[LoginForm] /api/auth/session response:', session);
+        } catch (err) {
+          console.error('[LoginForm] Error fetching /api/auth/session:', err);
+        }
+      }} className="space-y-6">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -81,9 +125,12 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          disabled={isLoading} // Disable while loading
+          disabled={isLoading} 
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            console.log('[LoginForm] User typed in email:', e.target.value);
+          }}
           className="mt-1 bg-white dark:bg-gray-900 text-black dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 border-gray-300 dark:border-gray-700 focus:ring-blue-500 focus:border-blue-500"
           placeholder="you@example.com"
         />
@@ -97,9 +144,12 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          disabled={isLoading} // Disable while loading
+          disabled={isLoading} 
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            console.log('[LoginForm] User typed in password: ***');
+          }}
           className="mt-1 bg-white dark:bg-gray-900 text-black dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 border-gray-300 dark:border-gray-700 focus:ring-blue-500 focus:border-blue-500"
           placeholder="••••••••"
         />

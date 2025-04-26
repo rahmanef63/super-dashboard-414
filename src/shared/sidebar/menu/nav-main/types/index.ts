@@ -1,68 +1,63 @@
-import type { LucideIcon } from "lucide-react"
+import type {
+  BaseMenuItem,
+  MenuItemWithChildren,
+  MenuData,
+  MenuDataItem,
+  SidebarBaseProps,
+  DashboardMenuParams as GlobalDashboardMenuParams,
+  WorkspaceParams as GlobalWorkspaceParams
+} from '../../../types';
 
-// Base menu item interface
-export interface BaseMenuItem {
-  id: string
-  title: string
-  url: string
-  icon?: LucideIcon
-  isActive?: boolean
+/**
+ * MenuContext extends SidebarBaseProps for nav-main context usage.
+ * Use this as the main context shape for nav-main menu components.
+ */
+export interface MenuContext extends SidebarBaseProps {
+  dashboardId: string;
+  workspaceId?: string;
+  menuId?: string;
+  userId?: string;
 }
 
-// Menu item with children
-export interface MenuItemWithChildren extends BaseMenuItem {
-  items?: BaseMenuItem[]
-  workspaceId?: string
+import type { LucideIcon } from "lucide-react";
+
+// Main menu item type
+export type NavMenuItem = {
+  title: string;
+  url: string;
+  icon?: string | LucideIcon;
+  isActive?: boolean;
+  items?: NavMenuItem[];
+};
+
+// Props for the NavMain component (and similar)
+export interface NavMainProps {
+  staticItems?: NavMenuItem[];
+  dynamicItems?: NavMenuItem[];
+  showStaticLabel?: boolean;
+  showDynamicLabel?: boolean;
+  staticTitle?: string;
+  dynamicTitle?: string;
 }
 
-// Menu context for dashboard or workspace
-export interface MenuContext {
-  dashboardId: string
-  workspaceId?: string
-  menuId?: string
-  userId?: string
-}
-
-// Menu configuration
+// (Retain any other types needed for menu config/building)
 export interface MenuConfig {
-  showLabel?: boolean
-  title?: string
-  emptyMessage?: string
+  showLabel?: boolean;
+  title?: string;
+  emptyMessage?: string;
 }
 
-// Menu data structure
-export interface MenuData {
-  title: string
-  description: string
-  items: MenuDataItem[]
-}
-
-// Menu data item
-export interface MenuDataItem {
-  id: string
-  title: string
-  description?: string
-  value?: number | string
-  status?: "pending" | "completed" | "failed"
-  date?: string
-  icon?: string
-}
-
-// Menu builder options
 export interface MenuBuilderOptions {
-  includeParents?: boolean
-  sortByOrder?: boolean
-  filterByType?: string[]
+  includeParents?: boolean;
+  sortByOrder?: boolean;
+  filterByType?: string[];
 }
 
-// Menu route params
-export interface DashboardMenuParams {
-  dashboard: string
-  dashboard_menu: string
-}
+export type DashboardMenuParams = GlobalDashboardMenuParams & {
+  dashboard_menu: string;
+};
 
-export interface WorkspaceMenuParams {
-  dashboard: string
-  workspace: string
-  workspace_menu: string
-}
+export type WorkspaceMenuParams = GlobalWorkspaceParams & {
+  dashboard: string;
+  workspace_menu: string;
+};

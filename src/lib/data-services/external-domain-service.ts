@@ -1,4 +1,4 @@
-import prisma from "../prisma"
+import {prisma} from "../prisma"
 import type { ExternalDomain } from "@prisma/client"
 
 // Get domain by name
@@ -17,7 +17,7 @@ export const getDomainByName = async (domainName: string): Promise<ExternalDomai
 // Create a new domain
 export const createDomain = async (data: {
   domainName: string
-  defaultDashboardId?: string
+  
   organizationId?: string
   description?: string
 }): Promise<ExternalDomain | null> => {
@@ -37,7 +37,7 @@ export const updateDomain = async (
   id: string,
   data: {
     domainName?: string
-    defaultDashboardId?: string
+    
     description?: string
   },
 ): Promise<ExternalDomain | null> => {

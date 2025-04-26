@@ -1,103 +1,35 @@
 "use client"
-import { ChevronDown } from "lucide-react"
-import Link from "next/link"
-import { useState } from "react"
-import type { LucideIcon } from "lucide-react"
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import {
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-} from "@/components/ui/sidebar"
+import { SidebarFeatureMenuLoader } from "./components/SidebarFeatureMenuLoader";
+import { getAvailableFeatureManifests } from "@/shared/pages/feature-access";
+import type { FeatureManifest } from "@/shared/pages/types/manifest";
 
-// Update the NavMain component to accept a showLabel prop
-export function NavMain({
-  items,
-  showLabel = true,
-}: {
-  items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-      isActive?: boolean
-    }[]
-  }[]
-  showLabel?: boolean
-}) {
-  // Track open state for each menu item
-  const [openItems, setOpenItems] = useState<Record<string, boolean>>({})
+// Dummy userPermissions and accessCheck for demonstration; replace with real logic
+const userPermissions = {};
+const accessCheck = (manifest: FeatureManifest, userPermissions: any) => {
+  // TODO: Replace with actual permission logic
+  return manifest.featureType === "static" || true;
+};
 
-  // Toggle open state for a specific item
-  const toggleItem = (title: string) => {
-    setOpenItems((prev) => ({
-      ...prev,
-      [title]: !prev[title],
-    }))
-  }
+interface NavMainProps {
+  dashboardId: string;
+  workspaceId?: string | null;
+}
+
+export function NavMain({ dashboardId, workspaceId }: NavMainProps) {
+  const features = getAvailableFeatureManifests(userPermissions, accessCheck);
+  const dynamicFeatures = features.filter(f => f.featureType === "dynamic");
+  const staticFeatures = features.filter(f => f.featureType === "static");
 
   return (
-    <SidebarGroup>
-      {showLabel && <SidebarGroupLabel>Navigation</SidebarGroupLabel>}
-      <SidebarMenu>
-        {items.map((item) => {
-          // Determine if this item should be open
-          const isOpen = openItems[item.title] ?? item.isActive ?? false
-          const hasSubItems = item.items && item.items.length > 0
-
-          return (
-            <Collapsible
-              key={item.title}
-              open={isOpen}
-              onOpenChange={() => toggleItem(item.title)}
-              className="group/collapsible"
-            >
-              <SidebarMenuItem>
-                {hasSubItems ? (
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={item.title} isActive={item.isActive}>
-                      {item.icon && <item.icon />}
-                      <span>{item.title}</span>
-                      <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                ) : (
-                  <Link href={item.url} passHref>
-                    <SidebarMenuButton tooltip={item.title} isActive={item.isActive}>
-                      {item.icon && <item.icon />}
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                )}
-                {hasSubItems && (
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {item.items?.map((subItem) => (
-                        <SidebarMenuSubItem key={subItem.title}>
-                          <SidebarMenuSubButton asChild isActive={subItem.isActive}>
-                            <Link href={subItem.url}>
-                              <span>{subItem.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                )}
-              </SidebarMenuItem>
-            </Collapsible>
-          )
-        })}
-      </SidebarMenu>
-    </SidebarGroup>
-  )
+    <div className="flex flex-col h-full justify-between">
+      <div>
+        <SidebarFeatureMenuLoader features={dynamicFeatures} dashboardId={dashboardId} workspaceId={workspaceId} />
+      </div>
+      <div>
+        <SidebarFeatureMenuLoader features={staticFeatures} dashboardId={dashboardId} workspaceId={workspaceId} />
+      </div>
+    </div>
+  );
 }
+

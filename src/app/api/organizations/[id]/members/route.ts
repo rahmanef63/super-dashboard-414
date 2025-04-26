@@ -1,23 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { requireAuth } from "@/lib/middleware/auth-middleware"
+import { prisma } from "@/lib/prisma"
+import { getToken } from "next-auth/jwt"
 
 // GET /api/organizations/[id]/members - Get all members of an organization
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const organizationId = params.id
-
+    const userId = token.sub;
+    const organizationId = params.id;
     // Check if user has access to the organization
     const hasAccess = await prisma.organizationMembership.findFirst({
       where: {
         organizationId,
-        userId: user.id,
+        userId,
         status: "ACTIVE",
       },
     })
@@ -39,7 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
             email: true,
           },
         },
-        role: true,
+        orgRole: true,
       },
     })
 
@@ -53,87 +51,57 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 // POST /api/organizations/[id]/members - Invite a new member to the organization
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const organizationId = params.id
-    const { email, roleId } = await req.json()
-
+    const userId = token.sub;
+    const organizationId = params.id;
+    const { email, orgRoleId } = await req.json();
     if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 })
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
-
     // Check if user has permission to invite members
     const membership = await prisma.organizationMembership.findFirst({
       where: {
         organizationId,
-        userId: user.id,
+        userId,
         status: "ACTIVE",
-        role: {
+        orgRole: {
           name: {
             in: ["OWNER", "ADMIN"], // Only owners and admins can invite members
           },
         },
       },
-    })
-
+    });
     if (!membership) {
-      return NextResponse.json({ error: "Forbidden: You don't have permission to invite members" }, { status: 403 })
+      return NextResponse.json({ error: "Forbidden: You don't have permission to invite members" }, { status: 403 });
     }
-
     // Check if the role exists and belongs to the organization
-    const role = await prisma.organizationRole.findFirst({
+    const orgRole = await prisma.orgRole.findFirst({
       where: {
-        id: roleId,
+        id: orgRoleId,
         organizationId,
       },
-    })
-
-    if (!role) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 })
+    });
+    if (!orgRole) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
-
-    // Check if the user already exists
-    const invitedUser = await prisma.user.findUnique({
-      where: {
-        email,
-      },
-    })
-
-    // If the user already exists, check if they're already a member
-    if (invitedUser) {
-      const existingMembership = await prisma.organizationMembership.findFirst({
-        where: {
-          organizationId,
-          userId: invitedUser.id,
-        },
-      })
-
-      if (existingMembership) {
-        return NextResponse.json({ error: "User is already a member of this organization" }, { status: 400 })
-      }
-    }
-
-    // Create an invitation
+    // Create invitation
     const invitation = await prisma.invitation.create({
       data: {
         email,
         organizationId,
-        roleId,
-        invitedById: user.id,
+        roleId: orgRole.id,
+        senderId: userId,
         token: crypto.randomUUID(), // Generate a unique token
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Expires in 7 days
       },
-    })
-
+    });
     // TODO: Send invitation email
-
-    return NextResponse.json({ message: "Invitation sent successfully", invitation }, { status: 201 })
+    return NextResponse.json({ message: "Invitation sent successfully", invitation }, { status: 201 });
   } catch (error) {
-    console.error("Error inviting member:", error)
-    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
+    console.error("Error inviting member:", error);
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }

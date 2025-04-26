@@ -10,10 +10,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 // PATCH /api/domains/[id]
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const { id } = params
-  const { domainName, defaultDashboardId, description } = await req.json()
+  const { domainName, description } = await req.json()
 
   try {
-    const updatedDomain = await updateDomain(id, { domainName, defaultDashboardId, description })
+    const updatedDomain = await updateDomain(id, { domainName, description })
 
     if (!updatedDomain) {
       return NextResponse.json({ message: "Domain not found" }, { status: 404 })

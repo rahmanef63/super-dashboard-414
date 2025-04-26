@@ -1,7 +1,7 @@
 import { RegisterForm } from "../_components/register-form"
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/src/app/auth/_lib/auth" // Updated import path
+import { authOptions } from "@/app/auth/_lib/auth" // Updated import path
 import Link from "next/link"
 
 export default async function RegisterPage() {

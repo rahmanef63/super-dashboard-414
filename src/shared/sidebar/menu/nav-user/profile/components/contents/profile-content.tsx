@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Camera, Link as LinkIcon, Mail, MapPin, Phone, User as UserIcon } from "lucide-react" // Renamed User to UserIcon
 import { useState, useEffect } from "react"
 // import { user } from '../../../config' // Removed mock user import
-import { useAuth } from "@/src/app/auth/_hooks/use-auth" // Import useAuth
+import { useAuth } from "@/app/auth/_hooks/use-auth" // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function ProfileContent() {

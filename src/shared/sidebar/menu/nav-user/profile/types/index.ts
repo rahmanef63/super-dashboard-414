@@ -1,12 +1,31 @@
-import { ReactNode } from "react"
+import type { ReactNode } from "react";
+import type { SidebarBaseProps, BaseMenuItem } from '../../../../types';
 
-export type UserMenuType = "help" | "messages" | "notifications" | "privacy" | "profile" | "settings"
+export type UserMenuType = "help" | "messages" | "notifications" | "privacy" | "profile" | "settings";
 
-export interface DynamicProps {
-  type: UserMenuType
-  trigger: ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
+/**
+ * DynamicProps for user menu popovers, extends SidebarBaseProps for DRYness.
+ */
+export interface DynamicProps extends SidebarBaseProps {
+  type: UserMenuType;
+  trigger: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+/**
+ * ProfileMenuItem extends BaseMenuItem for profile-related sidebar menu items.
+ * Extend this for specific profile menu entries if needed.
+ */
+export interface ProfileMenuItem extends BaseMenuItem {
+  // Add profile-specific fields here
+}
+
+/**
+ * ProfileMenuProps extends SidebarBaseProps for profile menu components.
+ */
+export interface ProfileMenuProps extends SidebarBaseProps {
+  items: ProfileMenuItem[];
 }
 
 export const USER_MENU_TITLES: Record<UserMenuType, string> = {
@@ -16,7 +35,7 @@ export const USER_MENU_TITLES: Record<UserMenuType, string> = {
   privacy: "Privacy Settings",
   profile: "Profile",
   settings: "Settings",
-}
+};
 
 export const USER_MENU_CONTENTS: Record<UserMenuType, ReactNode> = {
   help: null,
@@ -25,4 +44,4 @@ export const USER_MENU_CONTENTS: Record<UserMenuType, ReactNode> = {
   privacy: null,
   profile: null,
   settings: null,
-}
+};

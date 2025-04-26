@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "@/src/shared/providers/session-provider"
+import { useSession } from "@/shared/providers/session-provider"
 import { useToast } from "@/components/ui/use-toast"
 
 export function useInitializeUser() {

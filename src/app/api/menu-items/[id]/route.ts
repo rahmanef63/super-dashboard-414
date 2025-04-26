@@ -1,39 +1,35 @@
 import { type NextRequest, NextResponse } from "next/server"
 import * as menuItemService from "@/lib/data-services/menu-item-service"
-import { requireAuth } from "@/lib/middleware/auth-middleware"
+import { authMiddleware } from "@/lib/middleware/auth-middleware"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Check authentication
-    const authResult = await requireAuth(request)
-    if (!authResult.success) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const authResult = await authMiddleware(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
-
     // Get menu item by ID
-    const menuItem = await menuItemService.getMenuItemById(params.id)
+    const menuItem = await menuItemService.getMenuItemById(params.id);
     if (!menuItem) {
-      return NextResponse.json({ error: "Menu item not found" }, { status: 404 })
+      return NextResponse.json({ error: "Menu item not found" }, { status: 404 });
     }
-
-    return NextResponse.json({ data: menuItem })
+    return NextResponse.json({ data: menuItem });
   } catch (error) {
-    console.error(`Error in GET /api/menu-items/${params.id}:`, error)
-    return NextResponse.json({ error: "Failed to fetch menu item" }, { status: 500 })
+    console.error(`Error in GET /api/menu-items/${params.id}:`, error);
+    return NextResponse.json({ error: "Failed to fetch menu item" }, { status: 500 });
   }
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Check authentication
-    const authResult = await requireAuth(request)
-    if (!authResult.success) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const authResult = await authMiddleware(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
-
     // Get request body
-    const body = await request.json()
-
+    const body = await request.json();
     // Update menu item
     const menuItem = await menuItemService.updateMenuItem(params.id, {
       title: body.title,
@@ -42,36 +38,32 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       target: body.target,
       globalContext: body.globalContext,
       parentId: body.parentId,
-    })
-
+    });
     if (!menuItem) {
-      return NextResponse.json({ error: "Menu item not found" }, { status: 404 })
+      return NextResponse.json({ error: "Menu item not found" }, { status: 404 });
     }
-
-    return NextResponse.json({ data: menuItem })
+    return NextResponse.json({ data: menuItem });
   } catch (error) {
-    console.error(`Error in PATCH /api/menu-items/${params.id}:`, error)
-    return NextResponse.json({ error: "Failed to update menu item" }, { status: 500 })
+    console.error(`Error in PATCH /api/menu-items/${params.id}:`, error);
+    return NextResponse.json({ error: "Failed to update menu item" }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     // Check authentication
-    const authResult = await requireAuth(request)
-    if (!authResult.success) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const authResult = await authMiddleware(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
-
     // Delete menu item
-    const success = await menuItemService.deleteMenuItem(params.id)
+    const success = await menuItemService.deleteMenuItem(params.id);
     if (!success) {
-      return NextResponse.json({ error: "Menu item not found or could not be deleted" }, { status: 404 })
+      return NextResponse.json({ error: "Menu item not found or could not be deleted" }, { status: 404 });
     }
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(`Error in DELETE /api/menu-items/${params.id}:`, error)
-    return NextResponse.json({ error: "Failed to delete menu item" }, { status: 500 })
+    console.error(`Error in DELETE /api/menu-items/${params.id}:`, error);
+    return NextResponse.json({ error: "Failed to delete menu item" }, { status: 500 });
   }
 }

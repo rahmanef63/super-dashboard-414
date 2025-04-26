@@ -24,7 +24,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar" // Corrected import path
-import { useToast } from "@/src/shared/styles/hooks/use-toast" // Corrected import path
+import { useToast } from "@/shared/styles/hooks/use-toast" // Corrected import path
 import { useMediaQuery } from "@/hooks/use-media-query" // Corrected import path
 import { useUserMenu } from "./profile/hooks/useUserMenu"
 import { USER_MENU_ITEMS } from "./profile/config/menuItems"
@@ -32,7 +32,7 @@ import { showKeyboardShortcuts } from "./profile/utils/userActions"
 import { DynamicSheet } from "./profile/lib/DynamicSheet"
 import { DynamicDrawer } from "./profile/lib/DynamicDrawer"
 import { useEffect } from "react"
-import { useAuth } from "@/src/app/auth/_hooks/use-auth"
+import { useAuth } from "@/app/auth/_hooks/use-auth"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function NavUser() {
@@ -40,6 +40,8 @@ export function NavUser() {
   const { isMobile, state: sidebarState } = useSidebar()
   const isDesktop = useMediaQuery("(min-width: 768px)")
   const { user, loading, logout: authLogout } = useAuth()
+
+  console.log("[NavUser DEBUG] user:", user, "loading:", loading);
 
   const {
     activeMenu,
@@ -59,21 +61,32 @@ export function NavUser() {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" className="pointer-events-none">
-            <Skeleton className="h-8 w-8 rounded-lg" />
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="mt-1 h-3 w-24" />
-            </div>
-            <ChevronsUpDown className="ml-auto size-4 opacity-50" />
-          </SidebarMenuButton>
+          <Skeleton className="h-8 w-8 rounded-full" />
         </SidebarMenuItem>
       </SidebarMenu>
     )
   }
 
   if (!user) {
-     return null;
+    console.error("[NavUser] No user data found or user is not authenticated.");
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <div className="text-red-500 p-2">No user data available.</div>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
+
+  if (!USER_MENU_ITEMS || USER_MENU_ITEMS.length === 0) {
+    console.error("[NavUser] No menu items found.");
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <div className="text-red-500 p-2">No menu items available.</div>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
   }
 
   const userName = user.name || "User";

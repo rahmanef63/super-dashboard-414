@@ -1,16 +1,17 @@
 import type React from "react";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/src/app/auth/_lib/auth";
+import { authOptions } from "@/app/auth/_lib/auth";
 import { redirect } from "next/navigation";
 import { User as NextAuthUser } from "next-auth";
-import { AppSidebar } from "@/src/shared/sidebar/app-sidebar";
-import { WorkspaceProvider } from "@/src/shared/sidebar/menu/workspace-switcher/context/workspace-context";
+import { AppSidebar } from "@/shared/sidebar/app-sidebar";
+import { WorkspaceProvider } from "@/shared/sidebar/menu/nav-main/workspace-switcher/context/workspace-context";
 import { SidebarProvider } from "@/components/ui/sidebar";
-
+import { type MenuItem } from "@/shared/sidebar/app-sidebar/types";
 // Import necessary types from your data schema/prisma client if not already available globally
 // Assuming types like Dashboard, Workspace, MenuItem, MenuUsage, User exist
 // Ensure these types correctly include relations if needed (e.g., MenuUsage includes MenuItem)
-import type { Dashboard, Workspace, MenuItem, MenuUsage as PrismaMenuUsage, User as DataServiceUser } from "@/types/types"; // Adjust path as needed
+import type { UIDashboard as Dashboard, Workspace, MenuUsage as PrismaMenuUsage, User as DataServiceUser, DashboardAssignmentWithDashboard } from "@/types"; // Use UIDashboard for UI
+import { getAssignmentsForUser } from "@/lib/data-services/dashboard-assignment-service"; // Added for direct DB access
 
 // Define a potentially populated MenuUsage type if your API returns nested data
 type MenuUsage = PrismaMenuUsage & {
@@ -22,13 +23,25 @@ type MenuUsage = PrismaMenuUsage & {
 // TODO: Implement these functions in '@/lib/api-client' or similar
 
 async function fetchDashboardsForUser(userId: string): Promise<Dashboard[]> {
-  console.warn(`fetchDashboardsForUser (User: ${userId}): Using placeholder data. Implement actual API call to /api/dashboards.`);
-  // Example: Fetch dashboards assigned via DashboardAssignment
-  // const response = await fetch('/api/dashboards'); // Needs user context
-  // if (!response.ok) throw new Error('Failed to fetch dashboards');
-  // const data = await response.json();
-  // return data.dashboards || [];
-  return []; // Replace with actual API call
+  // Real implementation: fetch dashboards assigned to the current user
+  try {
+    const response = await fetch("/api/dashboards", { method: "GET", credentials: "include" });
+    if (!response.ok) {
+      throw new Error("Failed to fetch dashboards");
+    }
+    const data = await response.json();
+    // Ensure workspaces property exists on each dashboard (for UI compatibility)
+    const dashboards = (data.dashboards || []).map((d: any) => ({ ...d, workspaces: d.workspaces ?? [] })) as Dashboard[];
+    if (dashboards.length > 0) {
+      console.log(`[fetchDashboardsForUser] Dashboards fetched from API:`, dashboards.map((d: Dashboard) => d.id || d.name));
+    } else {
+      console.log(`[fetchDashboardsForUser] No dashboards assigned to user or API returned empty.`);
+    }
+    return dashboards;
+  } catch (err) {
+    console.error("Error in fetchDashboardsForUser:", err);
+    return [];
+  }
 }
 
 async function fetchWorkspacesForDashboard(dashboardId: string): Promise<Workspace[]> {
@@ -90,87 +103,115 @@ export default async function DashboardLayout({
 	let workspacesForCurrentDashboard: Workspace[] = [];
 	let menuUsagesForCurrentDashboard: MenuUsage[] = []; // Includes MenuItem details
 
+	let fetchError: Error | null = null;
 	try {
 		// 1. Fetch all dashboards assigned to the user
 		console.log(`[layout] Fetching dashboards for user: ${user.id}`);
-		userDashboards = await fetchDashboardsForUser(user.id);
-		console.log(`[layout] Found ${userDashboards.length} dashboards for user.`);
+		const assignments = await getAssignmentsForUser(user.id) as DashboardAssignmentWithDashboard[];
+		userDashboards = assignments
+			.filter(a => a.dashboard && typeof a.dashboard === 'object' && a.dashboard !== null)
+			.map(a => ({
+				...a.dashboard,
+				workspaces: a.dashboard.workspaces ?? []
+			}));
 
-		if (userDashboards.length === 0) {
-			console.warn(`[layout] No dashboards found for user ${user.id}. Cannot proceed.`);
-            // Render an error state or redirect to a creation page
-            return (
-                <div className="flex items-center justify-center h-screen">
-                    <p>No dashboards have been assigned to your account. Please contact an administrator.</p>
+    if (userDashboards.length > 0) {
+      console.log(`[layout] Dashboards successfully loaded from backend for user ${user.id}:`, userDashboards.map((d: Dashboard) => d.id || d.name));
+    } else {
+      console.warn(`[layout] No dashboards found for user ${user.id}. Displaying sidebar with error handling.`);
+      return (
+        <WorkspaceProvider>
+          <SidebarProvider>
+            <div className="flex h-screen w-full bg-background">
+              <AppSidebar
+                userDashboards={[]}
+                currentDashboard={null}
+                workspaces={[]}
+                menuUsages={[]}
+                user={{
+                  id: user.id,
+                  email: user.email ?? '',
+                  name: user.name ?? 'User',
+                  avatar: user.image ?? null,
+                }}
+              />
+              <main className="flex flex-1 flex-col justify-center items-center gap-4 p-4 pt-0">
+                <div className="flex flex-col items-center">
+                  <h1 className="text-2xl font-bold">No Dashboards Found</h1>
+                  <p className="mt-2">No dashboards have been assigned to your account. Please contact an administrator.</p>
                 </div>
-            );
-		}
+              </main>
+            </div>
+          </SidebarProvider>
+        </WorkspaceProvider>
+      );
+    }
 
-		// 2. Determine the current dashboard
-		const dashboardIdFromParams = params.dashboard;
-		if (dashboardIdFromParams) {
-			console.log(`[layout] Attempting to find dashboard with ID from params: ${dashboardIdFromParams}`);
-			currentDashboard = userDashboards.find(d => d.id === dashboardIdFromParams) || null;
-			if (!currentDashboard) {
-				console.warn(`[layout] Dashboard ID ${dashboardIdFromParams} from params not found or not assigned to user. Falling back to default.`);
-			}
-		}
+    // 2. Determine the current dashboard
+    const dashboardIdFromParams = params.dashboard;
+    if (dashboardIdFromParams) {
+      console.log(`[layout] Attempting to find dashboard with ID from params: ${dashboardIdFromParams}`);
+      currentDashboard = userDashboards.find(d => d.id === dashboardIdFromParams) || null;
+      if (!currentDashboard) {
+        console.warn(`[layout] Dashboard ID ${dashboardIdFromParams} from params not found or not assigned to user. Falling back to default.`);
+      }
+    }
 
-		// Fallback to the first dashboard if no valid one from params or params empty
-		if (!currentDashboard) {
-			currentDashboard = userDashboards[0];
-			console.log(`[layout] Using the first available dashboard as default: ${currentDashboard.id}`);
-            // Optional: Redirect to ensure URL matches the loaded dashboard
-            // if (dashboardIdFromParams && dashboardIdFromParams !== currentDashboard.id) {
-            //    redirect(`/dashboard/${currentDashboard.id}`);
-            // }
-		}
+    // Fallback to the first dashboard if no valid one from params or params empty
+    if (!currentDashboard && userDashboards.length > 1) {
+      currentDashboard = userDashboards[1];
+      console.log(`[layout] Using the second available dashboard as default: ${currentDashboard.id}`);
+    } else if (!currentDashboard && userDashboards.length > 0) {
+      currentDashboard = userDashboards[0];
+      console.log(`[layout] Using the first available dashboard as default: ${currentDashboard.id}`);
+    }
+    // Always ensure currentDashboard has workspaces
+    if (currentDashboard) {
+      currentDashboard = { ...currentDashboard, workspaces: currentDashboard.workspaces ?? [] };
+    }
 
+    // 3. Fetch Workspaces and Menu Usages for the determined Dashboard
+    if (currentDashboard) {
+      console.log(`[layout] Fetching workspaces and menu items for dashboard: ${currentDashboard.id}`);
+      workspacesForCurrentDashboard = await fetchWorkspacesForDashboard(currentDashboard.id);
+      menuUsagesForCurrentDashboard = await fetchMenuUsagesForDashboard(currentDashboard.id);
+    } else {
+      workspacesForCurrentDashboard = [];
+      menuUsagesForCurrentDashboard = [];
+    }
+  } catch (error) {
+    console.error("[layout] Error during data fetching:", error);
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p>Error loading dashboard data: {error instanceof Error ? error.message : 'Unknown error'}. Please try refreshing.</p>
+      </div>
+    );
+  }
 
-		// 3. Fetch Workspaces and Menu Usages for the determined Dashboard
-		console.log(`[layout] Fetching workspaces and menu items for dashboard: ${currentDashboard.id}`);
-		workspacesForCurrentDashboard = await fetchWorkspacesForDashboard(currentDashboard.id);
-        menuUsagesForCurrentDashboard = await fetchMenuUsagesForDashboard(currentDashboard.id);
+	console.log(`[layout] Data fetch complete: ${workspacesForCurrentDashboard.length} workspaces, ${menuUsagesForCurrentDashboard.length} menu usage records.`);
+	console.log("[layout] Data fetch successful. Rendering WorkspaceProvider and children.");
 
-		console.log(`[layout] Data fetch complete: ${workspacesForCurrentDashboard.length} workspaces, ${menuUsagesForCurrentDashboard.length} menu usage records.`);
-
-	} catch (error) {
-		console.error("[layout] Error during data fetching:", error);
-		return (
-			<div className="flex items-center justify-center h-screen">
-				<p>Error loading dashboard data: {error instanceof Error ? error.message : 'Unknown error'}. Please try refreshing.</p>
-			</div>
-		);
-	}
-
-	// ADDED CONSOLE LOG HERE
-	console.log(`[layout] User ${user.email} is now viewing the dashboard: ${currentDashboard.id}`);
-
-    // Prepare user object for AppSidebar
-    // Adjust based on the actual definition of DataServiceUser and needs of AppSidebar
-     const sidebarUser: DataServiceUser = {
-        // Map relevant fields from session user
-        id: user.id,
-        email: user.email ?? '',
-        name: user.name ?? 'User',
-        image: user.image,
-        // Add any other required fields from DataServiceUser, providing defaults if necessary
-        // e.g., status: 'active',
-        //       roleId: fetchedRoleId, // You might need to fetch the user's role separately
-    };
-
+	// Prepare user object for AppSidebar
+	const sidebarUser: DataServiceUser = {
+		id: user.id,
+		email: user.email ?? '',
+		name: user.name ?? 'User',
+		avatar: user.image ?? null, // Map image (from SessionUser) to avatar
+	};
 
 	return (
-		<WorkspaceProvider /* Pass initial state if needed */ >
+		<WorkspaceProvider>
 			<SidebarProvider>
 				<div className="flex h-screen bg-background">
-					<AppSidebar
-						userDashboards={userDashboards}
-						currentDashboard={currentDashboard} // Pass the determined active dashboard
-						workspaces={workspacesForCurrentDashboard}
-						menuUsages={menuUsagesForCurrentDashboard} // Pass menu usage data
-						user={sidebarUser}
-					/>
+					{currentDashboard && (
+						<AppSidebar
+							userDashboards={userDashboards.map((dashboard: Dashboard) => ({ ...dashboard, workspaces: dashboard.workspaces ?? [] }))}
+							currentDashboard={{ ...currentDashboard, workspaces: currentDashboard.workspaces ?? [] }}
+							workspaces={workspacesForCurrentDashboard}
+							menuUsages={menuUsagesForCurrentDashboard}
+							user={sidebarUser}
+						/>
+					)}
 					<main className="flex-1 overflow-auto p-4 md:p-6">
 						{children}
 					</main>

@@ -9,19 +9,23 @@ import {
   // Other icons are likely resolved via getIconByName now, but keep needed defaults
 } from "lucide-react" // Assuming lucide-react is installed now
 import {
-  getMenuItemPath,
   getMenuItemRelations,
   getMenuItemsForDashboard,
   getMenuItemsForWorkspace,
   getWorkspaceById,
   getDashboardById,
+  getMenuItemPath,
   workspaceHasMenuItems,
 } from "@/lib/data-service"
 import { getIconByName } from "@/shared/icon-picker/utils"; // Import the utility
 // Corrected import for TeamData - assuming it's defined here or in ../types
 // If TeamData is not in ../types, define it here:
 // interface TeamData { name: string; logo: React.ElementType; plan: string; }
-import type { NavItem, UserData, TeamData } from "../app-sidebar/types" // Ensure TeamData is exported from ../types
+// TODO: Move these to '@/types' for project-wide reuse
+export type NavItem = { title: string; url: string; icon?: any; isActive: boolean; workspaceId?: string; items: NavItem[] };
+export type UserData = { name: string; email: string; avatar: string };
+export type WorkspaceData = { name: string; logo: any; plan: string };
+
 import type { Dashboard, MenuItem, User } from "@/lib/data-service";
 
 // Define TeamData locally if not exported from ../types
@@ -33,6 +37,7 @@ import type { Dashboard, MenuItem, User } from "@/lib/data-service";
 
 
 // Hook to transform menu items into the format expected by NavMain
+// Now expects menuItems to be fetched from the backend (see usage below)
 export function useNavItems(menuItems: MenuItem[], pathname: string, dashboardId: string): NavItem[] {
   return React.useMemo(() => {
     try {
@@ -44,47 +49,31 @@ export function useNavItems(menuItems: MenuItem[], pathname: string, dashboardId
 
       console.log(`[useNavItems] Starting with ${menuItems.length} menu items for dashboard ${dashboardId}`)
 
-      const dashboard = getDashboardById(dashboardId)
-      if (!dashboard) {
-        console.log(`[useNavItems] Dashboard not found: ${dashboardId}`)
-        return []
-      }
-
-      const dashboardMenuItems = getMenuItemsForDashboard(dashboardId)
-      console.log(`[useNavItems] Found ${dashboardMenuItems.length} dashboard-level menu items`)
-
-      if (dashboardMenuItems.length === 0) {
-        console.log(`[useNavItems] No dashboard-level menu items found for dashboard ${dashboardId}`)
+      // Backend: menuItems should already be filtered for this dashboard
+      if (!menuItems || menuItems.length === 0) {
         const DefaultIcon = getIconByName("LayoutDashboard") || HelpCircle;
-        // Ensure title is always a string
         return [
           {
-            title: "Dashboard", // Already a string
+            title: "Dashboard",
             url: `/dashboard/${dashboardId}`,
             icon: DefaultIcon,
             isActive: pathname === `/dashboard/${dashboardId}`,
             items: [],
           },
-        ]
+        ];
       }
 
-      return dashboardMenuItems.map((item) => {
-        const subItems = menuItems.filter((subItem) => {
-          if (subItem.parent_id === item.id) return true;
-          const relations = getMenuItemRelations().filter(
-            (relation) => relation.parent_id === item.id && relation.child_id === subItem.id,
-          );
-          return relations.length > 0;
-        });
+      return menuItems
+        .filter((item) => !item.parent_id) // Only top-level items
+        .map((item) => {
+        const subItems = menuItems.filter((subItem) => subItem.parent_id === item.id);
 
         // --- Updated Icon Logic with fallback name ---
         const IconComponent = getIconByName(item.icon || item.name || 'HelpCircle') || HelpCircle;
         // --- End Updated Icon Logic ---
 
         const itemPath = item.path || getMenuItemPath(item, dashboardId);
-        // Safe access to name for path check
-        const safeItemName = item.name ?? '';
-        const isActive = pathname.includes(safeItemName.toLowerCase().replace(/\s+/g, "-")) || pathname.includes(itemPath);
+        const isActive = pathname.includes(itemPath);
 
         return {
           title: item.name ?? 'Untitled Item', // Fallback for title
@@ -93,14 +82,13 @@ export function useNavItems(menuItems: MenuItem[], pathname: string, dashboardId
           isActive: isActive,
           items: subItems.map((subItem) => {
             const subItemPath = subItem.path || getMenuItemPath(subItem, dashboardId);
-            // Safe access to name for path check
-            const safeSubItemName = subItem.name ?? '';
-            const isSubItemActive = pathname.includes(safeSubItemName.toLowerCase().replace(/\s+/g, "-")) || pathname.includes(subItemPath);
+            const isSubItemActive = pathname.includes(subItemPath);
 
             return {
-              title: subItem.name ?? 'Untitled SubItem', // Fallback for title
+              title: subItem.name ?? 'Untitled SubItem',
               url: subItemPath,
               isActive: isSubItemActive,
+              items: [], // Ensure NavItem typing
             };
           }),
         };
@@ -113,42 +101,24 @@ export function useNavItems(menuItems: MenuItem[], pathname: string, dashboardId
 }
 
 // Update the useWorkspaceMenuItems hook
+// Now expects menuItems to be fetched from the backend (see usage below)
 export function useWorkspaceMenuItems(
+  menuItems: MenuItem[],
   activeWorkspaceId: string | undefined,
   pathname: string,
   dashboardId: string,
 ): NavItem[] {
   return React.useMemo(() => {
-    if (!activeWorkspaceId) {
-      // console.log("[useWorkspaceMenuItems] No active workspace ID provided"); // Reduce noise maybe
-      return [];
-    }
-
     try {
-      console.log(`[useWorkspaceMenuItems] Getting menu items for workspace ${activeWorkspaceId}`);
-      const workspace = getWorkspaceById(activeWorkspaceId);
-      if (!workspace) {
-        console.log(`[useWorkspaceMenuItems] Workspace not found: ${activeWorkspaceId}`);
+      if (!activeWorkspaceId) {
         return [];
       }
-
-      const items = getMenuItemsForWorkspace(activeWorkspaceId);
-       // Ensure items is an array
-       if (!Array.isArray(items)) {
-        console.warn("[useWorkspaceMenuItems] getMenuItemsForWorkspace did not return an array:", items);
-        return [];
-      }
-      const workspaceName = workspace ? workspace.name : activeWorkspaceId;
-      console.log(`[useWorkspaceMenuItems] Found ${items.length} menu items for workspace ${workspaceName}`);
-
-      if (items.length === 0) {
-        console.log(`[useWorkspaceMenuItems] No menu items found for workspace ${workspaceName}, creating default items`);
+      if (!menuItems || menuItems.length === 0) {
         const DefaultHomeIcon = getIconByName("Home") || HelpCircle;
         const DefaultOverviewIcon = getIconByName("LayoutDashboard") || HelpCircle;
-        // Ensure titles are strings
         return [
           {
-            title: "Workspace Home", // Already string
+            title: "Workspace Home",
             url: `/dashboard/${dashboardId}/${activeWorkspaceId}`,
             icon: DefaultHomeIcon,
             isActive: pathname === `/dashboard/${dashboardId}/${activeWorkspaceId}`,
@@ -156,7 +126,7 @@ export function useWorkspaceMenuItems(
             items: [],
           },
           {
-            title: "Workspace Overview", // Already string
+            title: "Workspace Overview",
             url: `/dashboard/${dashboardId}/${activeWorkspaceId}/overview`,
             icon: DefaultOverviewIcon,
             isActive: pathname.includes(`/dashboard/${dashboardId}/${activeWorkspaceId}/overview`),
@@ -165,36 +135,38 @@ export function useWorkspaceMenuItems(
           },
         ];
       }
+      return menuItems
+        .filter((item) => !item.parent_id)
+        .map((item) => {
+          const subItems = menuItems.filter((subItem: MenuItem) => subItem.parent_id === item.id);
 
-      return items.map((item) => {
-        const subItems = items.filter((subItem) => subItem.parent_id === item.id);
+          // --- Updated Icon Logic with fallback name ---
+          const IconComponent = getIconByName(item.icon || item.name || 'HelpCircle') || HelpCircle;
+          // --- End Updated Icon Logic ---
 
-        // --- Updated Icon Logic with fallback name ---
-        const IconComponent = getIconByName(item.icon || item.name || 'HelpCircle') || HelpCircle;
-        // --- End Updated Icon Logic ---
+          const itemPath = item.path || getMenuItemPath(item, dashboardId, activeWorkspaceId);
+          const isActive = pathname.includes(itemPath) || pathname.includes(`/dashboard/${dashboardId}/${activeWorkspaceId}/${item.id}`);
 
-        const itemPath = item.path || getMenuItemPath(item, dashboardId, activeWorkspaceId);
-        const isActive = pathname.includes(itemPath) || pathname.includes(`/dashboard/${dashboardId}/${activeWorkspaceId}/${item.id}`);
+          return {
+            title: item.name ?? 'Untitled Item', // Fallback for title
+            url: itemPath,
+            icon: IconComponent,
+            isActive: isActive,
+            workspaceId: activeWorkspaceId,
+            items: subItems.map((subItem) => {
+              const subItemPath = subItem.path || getMenuItemPath(subItem, dashboardId, activeWorkspaceId);
+              const isSubItemActive = pathname.includes(subItemPath);
 
-        return {
-          title: item.name ?? 'Untitled Item', // Fallback for title
-          url: itemPath,
-          icon: IconComponent,
-          isActive: isActive,
-          workspaceId: activeWorkspaceId,
-          items: subItems.map((subItem) => {
-            const subItemPath = subItem.path || getMenuItemPath(subItem, dashboardId, activeWorkspaceId);
-            const isSubItemActive = pathname.includes(subItemPath);
-
-            return {
-              title: subItem.name ?? 'Untitled SubItem', // Fallback for title
-              url: subItemPath,
-              isActive: isSubItemActive,
-              workspaceId: activeWorkspaceId,
-            };
-          }),
-        };
-      });
+              return {
+                title: subItem.name ?? 'Untitled SubItem',
+                url: subItemPath,
+                isActive: isSubItemActive,
+                workspaceId: activeWorkspaceId,
+                items: [], // Ensure NavItem typing
+              };
+            }),
+          };
+        });
     } catch (error) {
       console.error("[useWorkspaceMenuItems] Error:", error);
       return [];
@@ -204,7 +176,7 @@ export function useWorkspaceMenuItems(
 
 // Hook to create teams data for TeamSwitcher
 // Ensure TeamData type matches expectation (either from import or local definition)
-export function useTeamsData(dashboard: Dashboard): TeamData[] {
+export function useTeamsData(dashboard: Dashboard): WorkspaceData[] {
   return React.useMemo(() => {
     try {
       // Ensure dashboard.name is a string

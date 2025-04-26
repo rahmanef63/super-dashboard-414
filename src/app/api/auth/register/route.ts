@@ -57,6 +57,21 @@ export async function POST(request: Request) {
     });
     console.log("User created successfully:", newUser);
 
+    // --- Assign user to default dashboard ---
+    try {
+      const { assignUserToDashboard } = await import('@/lib/data-services/dashboard-assignment-service');
+      const dashboardId = process.env.DEFAULT_DASHBOARD_ID || 'a83f5dd3-a1fd-4d84-849e-783e28ab5772';
+      await assignUserToDashboard({
+        dashboardId,
+        userId: newUser.id,
+        canEdit: false,
+      });
+      console.log(`User assigned to default dashboard: ${dashboardId}`);
+    } catch (assignmentError) {
+      console.error('Failed to assign user to default dashboard:', assignmentError);
+      // Do not fail registration if assignment fails
+    }
+
     // --- Return Success Response ---
     // You might want to trigger email verification here if needed
     console.log("--- Register API End (Success) ---");

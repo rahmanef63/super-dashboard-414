@@ -1,6 +1,7 @@
 "use client"
 import { useRouter, useParams } from "next/navigation"
-import { ChevronsUpDown, Plus, LayoutDashboard, Check } from "lucide-react"
+import { ChevronsUpDown, Plus, LayoutDashboard, Check, Briefcase } from "lucide-react"
+import { SidebarDashboardPlaceholder } from "@/shared/sidebar/app-sidebar/components/sidebar-dashboard-placeholder"
 import { cn } from "@/lib/utils"
 
 import {
@@ -16,7 +17,8 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/c
 import { Badge } from "@/components/ui/badge"
 
 import type { DashboardSwitcherProps } from "./types"
-import { useDashboards, useCurrentDashboard } from "./hooks"
+import { useDashboards, useCurrentDashboard, mapLegacyDashboardsToUIDashboards } from "./hooks"
+import { getWorkspacesForDashboard } from "@/lib/data-services/compatibility-layer"
 
 export function DashboardSwitcher({ teams, dashboard }: DashboardSwitcherProps) {
   const { isMobile } = useSidebar()
@@ -25,20 +27,50 @@ export function DashboardSwitcher({ teams, dashboard }: DashboardSwitcherProps) 
   const currentDashboardId = params?.dashboard as string
 
   // Get all available dashboards
-  const allDashboards = useDashboards()
+  let allDashboards: ReturnType<typeof useDashboards> = [];
+  let uiDashboards = [];
+  try {
+    allDashboards = useDashboards();
+    // Convert legacy dashboards to UIDashboard[]
+    uiDashboards = mapLegacyDashboardsToUIDashboards(allDashboards, getWorkspacesForDashboard);
+    if (!uiDashboards || uiDashboards.length === 0) {
+      throw new Error("No dashboards available");
+    }
+  } catch (err) {
+    console.error("Failed to load dashboards:", err);
+    return (
+      <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarDashboardPlaceholder 
+        icon={Briefcase} 
+        title="Dashboard" 
+        subtitle="Failed to load dashboards" />
+      </SidebarMenuItem>
+    </SidebarMenu>
+    );
+  }
 
   // Find the current dashboard
-  const currentDashboard = useCurrentDashboard(allDashboards, currentDashboardId)
+  const currentDashboard = useCurrentDashboard(uiDashboards, currentDashboardId);
 
   // Function to handle dashboard switching
   const handleDashboardSwitch = (dashboardId: string) => {
-    console.log("Switching to dashboard:", dashboardId)
-    router.push(`/dashboard/${dashboardId}`)
-  }
+    console.log("Switching to dashboard:", dashboardId);
+    router.push(`/dashboard/${dashboardId}`);
+  };
 
   if (!currentDashboard) {
-    console.log("No current dashboard found")
-    return null
+    console.error("No current dashboard found");
+    return (
+      <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarDashboardPlaceholder 
+        icon={Briefcase} 
+        title="Dashboard" 
+        subtitle="No current dashboard found" />
+      </SidebarMenuItem>
+    </SidebarMenu>
+    );
   }
 
   return (

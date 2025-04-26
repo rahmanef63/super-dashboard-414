@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { requireAuth } from "@/lib/middleware/auth-middleware"
+import { prisma } from "@/lib/prisma"
+import { getToken } from "next-auth/jwt"
 
 // Helper function to check if user has access to the organization
 async function checkOrganizationAccess(organizationId: string, userId: string) {
@@ -18,19 +18,16 @@ async function checkOrganizationAccess(organizationId: string, userId: string) {
 // GET /api/organizations/[id] - Get organization details
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const organizationId = params.id
-
+    const userId = token.sub;
+    const organizationId = params.id;
     // Check if user has access to the organization
-    const hasAccess = await checkOrganizationAccess(organizationId, user.id)
-
+    const hasAccess = await checkOrganizationAccess(organizationId, userId);
     if (!hasAccess) {
-      return NextResponse.json({ error: "Forbidden: You don't have access to this organization" }, { status: 403 })
+      return NextResponse.json({ error: "Forbidden: You don't have access to this organization" }, { status: 403 });
     }
 
     // Get organization details
@@ -63,26 +60,24 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 // PATCH /api/organizations/[id] - Update organization details
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const organizationId = params.id
-    const { name, description } = await req.json()
-
+    const userId = token.sub;
+    const organizationId = params.id;
+    const { name } = await req.json();
     // Check if user has access to the organization
     const membership = await prisma.organizationMembership.findFirst({
       where: {
         organizationId,
-        userId: user.id,
+        userId,
         status: "ACTIVE",
-        role: {
+        orgRole: {
           name: "OWNER", // Only owners can update organization details
         },
       },
-    })
+    });
 
     if (!membership) {
       return NextResponse.json(
@@ -98,10 +93,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       },
       data: {
         name,
-        description,
         updatedAt: new Date(),
       },
-    })
+    });
 
     return NextResponse.json(updatedOrganization)
   } catch (error) {
@@ -113,25 +107,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // DELETE /api/organizations/[id] - Delete organization
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await requireAuth(req)
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.sub) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const organizationId = params.id
-
+    const userId = token.sub;
+    const organizationId = params.id;
     // Check if user is the owner of the organization
     const membership = await prisma.organizationMembership.findFirst({
       where: {
         organizationId,
-        userId: user.id,
+        userId,
         status: "ACTIVE",
-        role: {
+        orgRole: {
           name: "OWNER", // Only owners can delete the organization
         },
       },
-    })
+    });
 
     if (!membership) {
       return NextResponse.json(

@@ -1,9 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/src/app/auth/_lib/auth"
+import { authOptions } from "@/app/auth/_lib/auth"
 import * as userService from "@/lib/data-services/user-service"
 import * as organizationService from "@/lib/data-services/organization-service"
-import * as dashboardService from "@/lib/data-services/dashboard-service"
+// import * as dashboardService from "@/lib/data-services/dashboard-service" // Removed: module does not exist
 import * as menuService from "@/lib/data-services/menu-service"
 
 export async function POST(req: NextRequest) {
@@ -49,85 +49,41 @@ export async function POST(req: NextRequest) {
       status: "ACTIVE",
     })
 
-    // Create a default dashboard
-    const dashboard = await dashboardService.createDashboard({
-      name: "My Dashboard",
-      description: "Default dashboard",
-      organizationId: organization.id,
-      createdById: userId,
-    })
+    // Create a default dashboard (DISABLED: dashboardService not implemented)
+    // const dashboard = await dashboardService.createDashboard({
+    //   name: "My Dashboard",
+    //   description: "Default dashboard",
+    //   organizationId: organization.id,
+    //   createdById: userId,
+    // })
+    //
+    // if (!dashboard) {
+    //   return NextResponse.json({ error: "Failed to create dashboard" }, { status: 500 })
+    // }
 
-    if (!dashboard) {
-      return NextResponse.json({ error: "Failed to create dashboard" }, { status: 500 })
-    }
-
-    // Assign user to dashboard
-    await dashboardService.assignUserToDashboard({
-      userId,
-      dashboardId: dashboard.id,
-    })
-
-    // Create default workspaces
-    const workspace1 = await dashboardService.createWorkspace({
-      name: "General",
-      description: "General workspace",
-      dashboardId: dashboard.id,
-    })
-
-    const workspace2 = await dashboardService.createWorkspace({
-      name: "Projects",
-      description: "Projects workspace",
-      dashboardId: dashboard.id,
-    })
-
-    // Create default menu items
-    const overviewMenuItem = await menuService.createMenuItem({
-      title: "Overview",
-      type: "MENU_ITEM",
-      icon: "layout-dashboard",
-      target: `/dashboard/${dashboard.id}/overview`,
-    })
-
-    const settingsMenuItem = await menuService.createMenuItem({
-      title: "Settings",
-      type: "MENU_ITEM",
-      icon: "settings",
-      target: `/dashboard/${dashboard.id}/settings`,
-    })
-
-    // Associate menu items with dashboard
-    if (overviewMenuItem) {
-      await menuService.associateMenuWithDashboard({
-        menuId: overviewMenuItem.id,
-        dashboardId: dashboard.id,
-        orderIndex: 0,
-      })
-    }
-
-    if (settingsMenuItem) {
-      await menuService.associateMenuWithDashboard({
-        menuId: settingsMenuItem.id,
-        dashboardId: dashboard.id,
-        orderIndex: 1,
-      })
-    }
+    // Dashboard creation and workspace/menu association DISABLED: dashboardService not implemented
+    // All dashboard-related features are currently disabled. Please implement dashboardService to enable this feature.
+    const workspace1 = null;
+    const workspace2 = null;
+    const overviewMenuItem = null;
+    const settingsMenuItem = null;
 
     // Log activity
-    await userService.logUserActivity({
+    await userService.logUserActivity(
       userId,
-      action: "USER_INITIALIZED",
-      metadata: {
+      "USER_INITIALIZED",
+      {
         organizationId: organization.id,
-        dashboardId: dashboard.id,
-      },
-    })
+        // dashboardId: dashboard.id, // dashboard is not created
+      }
+    );
 
     return NextResponse.json({
       success: true,
-      message: "User data initialized successfully",
+      message: "User data initialized successfully (dashboard features disabled)",
       data: {
         organization,
-        dashboard,
+        // dashboard, // dashboard is not created
         workspaces: [workspace1, workspace2].filter(Boolean),
       },
     })

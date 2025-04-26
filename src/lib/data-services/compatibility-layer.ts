@@ -131,7 +131,8 @@ export const userRoles: UserRole[] = [];
 
 // ** ADDED A DUMMY DEFAULT DASHBOARD **
 const defaultDashboard: DashboardLegacy = {
-    id: "default-dashboard-1",
+    id: "a83f5dd3-a1fd-4d84-849e-783e28ab5772", // replaced legacy dashboard id with UUID, see .env for default
+
     name: "Default Dashboard",
     description: "The default fallback dashboard",
     organizationId: "org-default",

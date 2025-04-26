@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { SidebarDashboardPlaceholder } from "@/sidebar/app-sidebar/components/sidebar-dashboard-placeholder"
 
 // Map of routes to icons
 const routeIcons = {
@@ -33,7 +34,7 @@ const routeIcons = {
 
 // Navigation items
 const navigationItems = [
-  { title: "Home", path: "/marketing-dashboard", icon: Home },
+  { title: "Home", path: "/home", icon: Home },
   { title: "About Us", path: "/aboutus", icon: Info },
   { title: "Portfolio", path: "/portfolio", icon: Briefcase },
   { title: "Blog", path: "/blog", icon: FileText },
@@ -52,16 +53,10 @@ export function MarketingSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Briefcase className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Marketing</span>
-                <span className="truncate text-xs">Dashboard</span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
+            <SidebarDashboardPlaceholder 
+            icon={Briefcase} 
+            title="Marketing" 
+            subtitle="Dashboard" />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

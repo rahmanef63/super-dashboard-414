@@ -1,8 +1,42 @@
-import type { User } from "@prisma/client"
-import prisma from "../prisma"
+import type { User, Prisma } from "@prisma/client"
+import { prisma } from "../prisma"
 
 // Assuming these functions already exist:
 // getUserById, getUserByEmail, createUser, updateUser
+
+/**
+ * Get a user by ID
+ * @param id The ID of the user
+ * @returns The user or null if not found
+ */
+export const getUserById = async (id: string): Promise<User | null> => {
+  try {
+    return await prisma.user.findUnique({
+      where: { id },
+    })
+  } catch (error) {
+    console.error(`Error getting user by id ${id}:`, error)
+    throw new Error(`Failed to get user by id: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+/**
+ * Update a user
+ * @param id The ID of the user
+ * @param data The data to update
+ * @returns The updated user
+ */
+export const updateUser = async (id: string, data: Prisma.UserUpdateInput): Promise<User> => {
+  try {
+    return await prisma.user.update({
+      where: { id },
+      data,
+    })
+  } catch (error: unknown) {
+    console.error(`Error updating user ${id}:`, error)
+    throw new Error(`Failed to update user: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
 
 /**
  * Delete a user
@@ -14,9 +48,9 @@ export const deleteUser = async (id: string): Promise<User> => {
     return await prisma.user.delete({
       where: { id },
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error deleting user ${id}:`, error)
-    throw new Error(`Failed to delete user: ${error.message}`)
+    throw new Error(`Failed to delete user: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -61,7 +95,7 @@ export const getUserRoles = async (userId: string): Promise<any[]> => {
       })
     }
 
-    orgMemberships.forEach((membership) => {
+    orgMemberships.forEach((membership: any) => {
       if (membership.orgRole) {
         roles.push({
           type: "organization",
@@ -72,9 +106,9 @@ export const getUserRoles = async (userId: string): Promise<any[]> => {
     })
 
     return roles
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error fetching roles for user ${userId}:`, error)
-    throw new Error(`Failed to fetch user roles: ${error.message}`)
+    throw new Error(`Failed to fetch user roles: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -90,9 +124,9 @@ export const getUserUiSettings = async (userId: string): Promise<any | null> => 
     })
 
     return settings
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error fetching UI settings for user ${userId}:`, error)
-    throw new Error(`Failed to fetch user UI settings: ${error.message}`)
+    throw new Error(`Failed to fetch user UI settings: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -132,9 +166,9 @@ export const updateUserUiSettings = async (
         },
       })
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error updating UI settings for user ${userId}:`, error)
-    throw new Error(`Failed to update user UI settings: ${error.message}`)
+    throw new Error(`Failed to update user UI settings: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -154,10 +188,10 @@ export const logUserActivity = async (userId: string, action: string, metadata?:
         metadata,
       },
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error logging activity for user ${userId}:`, error)
     // Don't throw an error for logging failures to prevent disrupting the main flow
-    console.warn(`Failed to log user activity: ${error.message}`)
+    console.warn(`Failed to log user activity: ${error instanceof Error ? error.message : String(error)}`)
     return null
   }
 }
@@ -179,9 +213,9 @@ export const getUserActivityLogs = async (userId: string, limit = 50, offset = 0
       take: limit,
       skip: offset,
     })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`Error fetching activity logs for user ${userId}:`, error)
-    throw new Error(`Failed to fetch user activity logs: ${error.message}`)
+    throw new Error(`Failed to fetch user activity logs: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 

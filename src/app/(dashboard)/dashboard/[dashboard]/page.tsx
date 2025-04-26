@@ -19,23 +19,25 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Activity, ArrowRight, Folder } from "lucide-react";
-import type { DashboardParams } from "@/src/shared/sidebar/types/dashboard";
-import { SliceLoader } from "@/app/(dashboard)/_components/slice-loader";
-import { SliceLoaderFallback } from "@/app/(dashboard)/_components/slice-loader-fallback";
+import type { DashboardParams } from "@/shared/sidebar/types";
+import { SliceLoader } from "@/shared/pages/_components/page-loader";
+import { SliceLoaderFallback } from "@/shared/pages/_components/page-loader-fallback";
+import { renderIcon } from "@/shared/icon-picker/utils/index";
 
-export default function DashboardPage({
+export default async function DashboardPage({
   params,
 }: { params: DashboardParams }) {
   try {
-    const dashboardId = params.dashboard;
-    const dashboard = getDashboardById(dashboardId);
+    // Ensure params is properly awaited before accessing its properties
+    const dashboardId = await Promise.resolve(params.dashboard);
+    const dashboard = await getDashboardById(dashboardId);
 
     if (!dashboard) {
       notFound();
     }
 
-    const workspaces = getWorkspacesForDashboard(dashboardId);
-    const menuItems = getMenuItemsForDashboard(dashboardId);
+    const workspaces = await getWorkspacesForDashboard(dashboardId);
+    const menuItems = await getMenuItemsForDashboard(dashboardId);
 
     // Check if the dashboard has an overview menu item
     const hasOverviewMenu = menuItems.some((item) => item.id === "overview");
@@ -155,10 +157,10 @@ export default function DashboardPage({
                   <Card key={item.id}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        {item.icon && <item.icon className="h-4 w-4" />}
+                        {item.icon && renderIcon(item.icon, { className: "h-4 w-4" })}
                         {item.title}
                       </CardTitle>
-                    </CardHeader>
+                    </CardHeader> 
                     <CardFooter>
                       <Button asChild variant="outline" size="sm" className="w-full">
                         <Link href={`/dashboard/${dashboardId}/${item.id}`}>Open Menu</Link>

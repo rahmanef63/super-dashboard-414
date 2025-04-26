@@ -95,7 +95,7 @@ export default async function DashboardPage({ params }: { params: { slug?: strin
 
   // Dynamic Menu Generation (Component needs to be implemented)
   const menu = (
-    <DynamicMenu
+    <SidebarDynamicMenuLoader
       dashboardId={dashboardId}
       workspaceId={workspaceId}
       sharedPages={sharedPages}
@@ -130,7 +130,7 @@ export default async function DashboardPage({ params }: { params: { slug?: strin
 *   **Error Handling:**  Implement robust error handling for invalid IDs and data fetching failures.
 *   **Data Relationships:** Clearly define the relationship between dashboards, workspaces, and pages (especially dynamic pages) in your data model. This will impact how you filter and display pages in the menu.
 *   **Dynamic Component Loading:**  Instead of directly importing components in the `Page` interface, consider using dynamic imports (`next/dynamic`) to improve performance by only loading the necessary components.
-*   **Menu Component:** Create a separate `DynamicMenu` component to encapsulate the menu logic and keep `page.tsx` cleaner.  This component will handle the conditional rendering of menu items based on the presence of IDs and the relevant page data.
+*   **Menu Component:** Create a separate `SidebarDynamicMenuLoader` component to encapsulate the menu logic and keep `page.tsx` cleaner.  This component will handle the conditional rendering of menu items based on the presence of IDs and the relevant page data.
 *   **Styling:** Apply appropriate styling to the menu and content areas to create a user-friendly interface.
 *   **Accessibility:**  Ensure the dynamic menu and content are accessible, following WCAG guidelines.
 

@@ -34,7 +34,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
     }
 
-    const updatedUser = await updateUser(id, { name, email, passwordHash, roleId })
+    // Build update data object
+    const updateData: any = { name, email, passwordHash };
+    if (roleId) {
+      updateData.role = { connect: { id: roleId } };
+    }
+    const updatedUser = await updateUser(id, updateData)
 
     if (!updatedUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 })

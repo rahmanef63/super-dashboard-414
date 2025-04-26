@@ -1,4 +1,10 @@
-import { PrismaClient, MenuItem } from "@prisma/client"; // Import MenuItem type
+import { PrismaClient, MenuItem, Role } from "@prisma/client"; // Import MenuItem and Role type
+
+let userRole: Role | null = null;
+
+// Config flag: set to false later to restrict super admin-only menus
+const INCLUDE_SUPER_ADMIN_MENUS = true;
+
 
 const prisma = new PrismaClient();
 
@@ -211,6 +217,15 @@ async function main() {
   console.log(`Start seeding ...`);
 
   // 1. Create or update Roles
+  userRole = await prisma.role.upsert({
+    where: { name: "User" },
+    update: { description: "Standard user role" },
+    create: {
+      name: "User",
+      description: "Standard user role",
+    },
+  });
+
   const superAdminRole = await prisma.role.upsert({
     where: { name: "Super Admin" },
     update: { description: "Super administrator with highest level access" },
@@ -229,7 +244,7 @@ async function main() {
     },
   });
 
-  const userRole = await prisma.role.upsert({
+  userRole = await prisma.role.upsert({
     where: { name: "User" },
     update: { description: "Standard user role" },
     create: {
@@ -353,15 +368,26 @@ async function main() {
 Processing Dashboard: ${dashData.dashboard}`);
 
     // 3. Create or update the Dashboard (owned by adminOwnerUser)
-    const dashboard = await prisma.dashboard.upsert({
-      where: { name_createdById: { name: dashData.dashboard, createdById: adminOwnerUser.id } }, // Use adminOwnerUser
-      update: {},
-      create: {
-        name: dashData.dashboard,
-        description: `${dashData.dashboard} - Seeded`,
-        createdById: adminOwnerUser.id, // Use adminOwnerUser
-      },
-    });
+    // Check for existing dashboard with same name and organizationId (null)
+let dashboard = await prisma.dashboard.findFirst({
+  where: {
+    name: dashData.dashboard,
+    organizationId: null,
+  },
+});
+if (!dashboard) {
+  dashboard = await prisma.dashboard.create({
+    data: {
+      name: dashData.dashboard,
+      description: `${dashData.dashboard} - Seeded`,
+      createdById: adminOwnerUser.id,
+      organizationId: null,
+    },
+  });
+  console.log(`  Created Dashboard: ${dashData.dashboard}`);
+} else {
+  console.log(`  Found existing Dashboard: ${dashData.dashboard}`);
+}
     console.log(`  Upserted Dashboard ID: ${dashboard.id}`);
 
     // 4. Assign Admin Owner User to the Dashboard
@@ -414,35 +440,87 @@ Processing Dashboard: ${dashData.dashboard}`);
           });
           console.log(`  Created Dashboard Menu Usage: ${menuTitle}`);
       }
+      // --- Give all users access to this menu ---
+      if (INCLUDE_SUPER_ADMIN_MENUS) { // Set to false to restrict super admin-only menus
+        const allUsers = await prisma.user.findMany();
+        for (const user of allUsers) {
+          await prisma.menuPermission.upsert({
+            where: {
+              menuId_userId: {
+                menuId: menuItem.id,
+                userId: user.id,
+              },
+            },
+            update: {},
+            create: {
+              menuId: menuItem.id,
+              userId: user.id,
+              permissionType: "full",
+              // Add roleId if needed
+            },
+          });
+        }
+      }
+      // --- End all-user menu access ---
       dashboardMenuOrder++;
     }
 
     // 6. Create Workspaces and their Menus
     for (const wsData of dashData.workspaces) {
       console.log(`  Processing Workspace: ${wsData.name}`);
-      const workspace = await prisma.workspace.upsert({
-        where: { name_dashboardId: { name: wsData.name, dashboardId: dashboard.id } },
-        update: {},
-        create: {
+      // Check for existing workspace with same name and dashboardId
+      let workspace = await prisma.workspace.findFirst({
+        where: {
           name: wsData.name,
-          description: `Workspace for ${wsData.name} in ${dashData.dashboard}`,
           dashboardId: dashboard.id,
         },
       });
+      if (!workspace) {
+        workspace = await prisma.workspace.create({
+          data: {
+            name: wsData.name,
+            description: `Workspace for ${wsData.name} in ${dashData.dashboard}`,
+            dashboardId: dashboard.id,
+          },
+        });
+        console.log(`    Created Workspace: ${wsData.name}`);
+      } else {
+        console.log(`    Found existing Workspace: ${wsData.name}`);
+      }
       console.log(`    Upserted Workspace ID: ${workspace.id}`);
 
       // Assign Admin Owner User to Workspace
-      await prisma.workspaceAssignment.upsert({
-        where: { userId_workspaceId: { userId: adminOwnerUser.id, workspaceId: workspace.id } }, // Use adminOwnerUser
-        update: { roleId: adminRole.id },
-        create: { userId: adminOwnerUser.id, workspaceId: workspace.id, roleId: adminRole.id },
+      let adminAssignment = await prisma.workspaceAssignment.findUnique({
+        where: { userId_workspaceId: { userId: adminOwnerUser.id, workspaceId: workspace.id } },
       });
-       // Also assign Super Admin
-      await prisma.workspaceAssignment.upsert({
+      if (!adminAssignment) {
+        await prisma.workspaceAssignment.create({
+          data: { userId: adminOwnerUser.id, workspaceId: workspace.id, roleId: adminRole.id },
+        });
+        console.log(`      Created WorkspaceAssignment for adminOwnerUser`);
+      } else {
+        await prisma.workspaceAssignment.update({
+          where: { userId_workspaceId: { userId: adminOwnerUser.id, workspaceId: workspace.id } },
+          data: { roleId: adminRole.id },
+        });
+        console.log(`      Updated WorkspaceAssignment for adminOwnerUser`);
+      }
+      // Also assign Super Admin
+      let superAdminAssignment = await prisma.workspaceAssignment.findUnique({
         where: { userId_workspaceId: { userId: superAdminUser.id, workspaceId: workspace.id } },
-        update: { roleId: superAdminRole.id },
-        create: { userId: superAdminUser.id, workspaceId: workspace.id, roleId: superAdminRole.id },
       });
+      if (!superAdminAssignment) {
+        await prisma.workspaceAssignment.create({
+          data: { userId: superAdminUser.id, workspaceId: workspace.id, roleId: superAdminRole.id },
+        });
+        console.log(`      Created WorkspaceAssignment for superAdminUser`);
+      } else {
+        await prisma.workspaceAssignment.update({
+          where: { userId_workspaceId: { userId: superAdminUser.id, workspaceId: workspace.id } },
+          data: { roleId: superAdminRole.id },
+        });
+        console.log(`      Updated WorkspaceAssignment for superAdminUser`);
+      }
       console.log(`    Assigned admin and super admin users to workspace.`);
 
       // Create Workspace Menu Items and Usage Links
@@ -455,27 +533,144 @@ Processing Dashboard: ${dashData.dashboard}`);
           target: menuTitle.toLowerCase().replace(/\s+/g, '-'),
           parentId: null,
         });
-        await prisma.menuUsage.upsert({
-          where: { menuId_workspaceId: { menuId: menuItem.id, workspaceId: workspace.id } },
-          update: { orderIndex: workspaceMenuOrder, dashboardId: dashboard.id },
-          create: {
-            menuId: menuItem.id,
-            workspaceId: workspace.id,
-            dashboardId: dashboard.id,
-            orderIndex: workspaceMenuOrder,
-          },
+        // Check for existing MenuUsage for this menuId and workspaceId
+        const existingWorkspaceUsage = await prisma.menuUsage.findFirst({
+          where: { menuId: menuItem.id, workspaceId: workspace.id },
         });
-        console.log(`    Linked Workspace Menu: ${menuTitle}`);
+        if (existingWorkspaceUsage) {
+          await prisma.menuUsage.update({
+            where: { id: existingWorkspaceUsage.id },
+            data: { orderIndex: workspaceMenuOrder, dashboardId: dashboard.id },
+          });
+          console.log(`    Updated Workspace Menu Usage: ${menuTitle}`);
+        } else {
+          await prisma.menuUsage.create({
+            data: {
+              menuId: menuItem.id,
+              workspaceId: workspace.id,
+              dashboardId: dashboard.id,
+              orderIndex: workspaceMenuOrder,
+            },
+          });
+          console.log(`    Created Workspace Menu Usage: ${menuTitle}`);
+        }
+        // --- Give all users access to this menu ---
+        if (INCLUDE_SUPER_ADMIN_MENUS) { // Set to false to restrict super admin-only menus
+          const allUsers = await prisma.user.findMany();
+          for (const user of allUsers) {
+            await prisma.menuPermission.upsert({
+              where: {
+                menuId_userId: {
+                  menuId: menuItem.id,
+                  userId: user.id,
+                },
+              },
+              update: {},
+              create: {
+                menuId: menuItem.id,
+                userId: user.id,
+                permissionType: "full",
+                // Add roleId if needed
+              },
+            });
+          }
+        }
+        // --- End all-user menu access ---
         workspaceMenuOrder++;
       }
     }
   }
 
-  console.log(`
-Seeding finished.`);
+  console.log(`\nSeeding finished.`);
+
+  // --- Assign every user to every dashboard as 'User' ---
+  const allUsers = await prisma.user.findMany();
+  const allDashboards = await prisma.dashboard.findMany();
+  if (userRole) {
+    for (const user of allUsers) {
+      for (const dashboard of allDashboards) {
+        await prisma.dashboardAssignment.upsert({
+          where: { userId_dashboardId: { userId: user.id, dashboardId: dashboard.id } },
+          update: { roleId: userRole.id },
+          create: { userId: user.id, dashboardId: dashboard.id, roleId: userRole.id },
+        });
+      }
+    }
+    console.log("All users assigned to all dashboards as 'User'.");
+  } else {
+    console.error("User role not found. Skipping dashboard assignment.");
+  }
+  // --- End all-user dashboard assignment ---
+
+  // --- NOTE for new user registration ---
+  // When registering a new user, assign them to all dashboards (or selected dashboards)
+  // and create MenuPermission records as needed. See this seed logic for reference.
+}
+
+// --- Ensure every user has default dashboards ---
+async function seedDefaultDashboardsForAllUsers() {
+  const defaultDashboards = ["Personal", "Team", "Projects"];
+  if (!userRole) {
+    console.error("User role not found. Aborting default dashboard seeding.");
+    return;
+  }
+  const users = await prisma.user.findMany();
+  for (const user of users) {
+    // Batch fetch all dashboards for this user
+    const userDashboards = await prisma.dashboard.findMany({
+      where: { createdById: user.id },
+      select: { name: true, id: true },
+    });
+    const existingNames = new Set(userDashboards.map(d => d.name));
+    for (const dashName of defaultDashboards) {
+      if (!existingNames.has(dashName)) {
+        // Create dashboard for this user
+        const dashboard = await prisma.dashboard.create({
+          data: {
+            name: dashName,
+            description: `${dashName} dashboard for user ${user.email}`,
+            createdById: user.id,
+          },
+        });
+        console.log(`Created dashboard '${dashName}' for user ${user.email}`);
+        // Assign user to this dashboard
+        await prisma.dashboardAssignment.create({
+          data: {
+            userId: user.id,
+            dashboardId: dashboard.id,
+            roleId: userRole.id,
+          },
+        });
+        console.log(`Assigned user ${user.email} to dashboard '${dashName}' as 'User'.`);
+      } else {
+        // Find the dashboard id from the user's dashboards
+        const dashboardObj = userDashboards.find(d => d.name === dashName);
+        if (dashboardObj) {
+          // Ensure assignment exists
+          const assignment = await prisma.dashboardAssignment.findUnique({
+            where: { userId_dashboardId: { userId: user.id, dashboardId: dashboardObj.id } },
+          });
+          if (!assignment) {
+            await prisma.dashboardAssignment.create({
+              data: {
+                userId: user.id,
+                dashboardId: dashboardObj.id,
+                roleId: userRole.id,
+              },
+            });
+            console.log(`Created missing assignment for user ${user.email} to dashboard '${dashName}'.`);
+          }
+        }
+      }
+    }
+  }
+  console.log("Default dashboards ensured for all users.");
 }
 
 main()
+  .then(async () => {
+    await seedDefaultDashboardsForAllUsers();
+  })
   .catch(async (e) => {
     console.error(e);
     await prisma.$disconnect();

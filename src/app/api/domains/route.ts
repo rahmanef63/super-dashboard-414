@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     console.log("POST /api/domains - Request Body:", body);
-    const { domainName, defaultDashboardId, description, organizationId } = body;
+    const { domainName, description, organizationId } = body;
 
     // Basic validation
     if (!domainName || !organizationId) {
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     const domain = await prisma.externalDomain.create({
       data: {
         domainName,
-        defaultDashboardId, // Can be null or undefined if optional
+        // Can be null or undefined if optional
         description, // Can be null or undefined if optional
         organizationId,
       },
